@@ -328,6 +328,16 @@ const updates: Update[] = [
       "Improved clarity of the participant status tooltip.",
     ],
   },
+  {
+    id: "26",
+    date: "2026-03-17",
+    title: "Theme Display Fixes",
+    description: "Improved how light and dark mode behave across pages.",
+    type: "fix",
+    details: [
+      "Participant test links now always open in light mode, the rest of the site continues to follow system theme or user preference.",
+    ],
+  },
 ];
 
 export function UpdatesList() {

@@ -3,7 +3,7 @@ import "@/styles/globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import LightIcon from "@/assets/icons/icon-light.svg";
 import DarkIcon from "@/assets/icons/icon-dark.svg";
-import { ThemeProvider } from "@/providers/theme-provider";
+import AppThemeProvider from "@/providers/app-theme-provider";
 import { APP_TITLE } from "@/lib/constants";
 import localFont from "next/font/local";
 import { CSPostHogProvider } from "@/providers/posthog-provider";
@@ -55,18 +55,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <CSPostHogProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
+          <AppThemeProvider>
             <Suspense fallback={null}>
               <PostHogPageView />
             </Suspense>
             {children}
             <Toaster />
-          </ThemeProvider>
+          </AppThemeProvider>
         </CSPostHogProvider>
         <Analytics />
       </body>
