@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   incrementStudyLimit,
   canCreateStudy,
+  isStudyCreationBlocked,
   STUDIES_PER_PURCHASE,
   DEFAULT_STUDY_LIMIT,
 } from "../study-limit";
@@ -47,5 +48,17 @@ describe("canCreateStudy", () => {
     const oldLimit = 3;
     const newLimit = incrementStudyLimit(oldLimit);
     expect(canCreateStudy(count, newLimit)).toBe(true);
+  });
+
+  it("treats limit 0 as no capacity", () => {
+    expect(canCreateStudy(0, 0)).toBe(false);
+    expect(isStudyCreationBlocked(0, 0)).toBe(true);
+  });
+});
+
+describe("isStudyCreationBlocked", () => {
+  it("mirrors negation of canCreateStudy", () => {
+    expect(isStudyCreationBlocked(0, 5)).toBe(false);
+    expect(isStudyCreationBlocked(5, 5)).toBe(true);
   });
 });

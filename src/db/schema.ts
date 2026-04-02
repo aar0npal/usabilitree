@@ -19,6 +19,14 @@ export const users = sqliteTable("users", {
     .default(sql`(STRFTIME('%s', 'now') * 1000)`),
 });
 
+/** Dedupes Creem webhook deliveries so checkout.completed retries do not double-credit. */
+export const creemProcessedWebhooks = sqliteTable("creem_processed_webhooks", {
+  webhookId: text("webhook_id", { length: 512 }).primaryKey(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(STRFTIME('%s', 'now') * 1000)`),
+});
+
 export const sessions = sqliteTable(
   "sessions",
   {

@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { Paths } from "@/lib/constants";
 import { db } from "@/db";
 import { studies as studiesTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { env } from "@/env";
 import { BillingClient } from "./_components/billing-client";
 
@@ -20,10 +20,13 @@ export default async function BillingPage() {
   const user = await getCurrentUser();
   if (!user) redirect(Paths.Login);
 
-  const ownedStudies = await db.select().from(studiesTable).where(eq(studiesTable.userId, user.id));
+  const [countRow] = await db
+    .select({ n: count() })
+    .from(studiesTable)
+    .where(eq(studiesTable.userId, user.id));
 
   const studyLimit = user.studyLimit;
-  const studyCount = ownedStudies.length;
+  const studyCount = countRow.n;
 
   return (
     <div>

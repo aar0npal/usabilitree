@@ -1,5 +1,6 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
+import { parseOptionalNonNegativeInt } from "@/lib/parse-env-int";
 
 export const env = createEnv({
   server: {
@@ -57,7 +58,7 @@ export const env = createEnv({
     SMTP_PORT: parseInt(process.env.SMTP_PORT ?? ""),
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
-    STUDY_LIMIT: parseInt(process.env.STUDY_LIMIT ?? ""),
+    STUDY_LIMIT: parseOptionalNonNegativeInt(process.env.STUDY_LIMIT),
     CREEM_API_KEY: process.env.CREEM_API_KEY,
     CREEM_WEBHOOK_SECRET: process.env.CREEM_WEBHOOK_SECRET,
   },

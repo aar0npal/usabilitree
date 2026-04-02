@@ -5,9 +5,10 @@ import { participants, studies, treeConfigs, treeTaskResults, treeTasks } from "
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/session";
-import { desc, and, ne, eq, sql } from "drizzle-orm";
+import { desc, and, ne, eq, sql, count } from "drizzle-orm";
 import { StudyFormData, TreeNode } from "@/lib/types/tree-test";
 import { getDefaultLanguage } from "@/lib/languages";
+import { canCreateStudy } from "@/lib/billing/study-limit";
 
 class ForbiddenError extends Error {
   constructor(message = "Forbidden") {
@@ -30,6 +31,15 @@ export async function createStudy(type: "tree_test" | "card_sort") {
   const studyId = nanoid();
 
   try {
+    const [countRow] = await db
+      .select({ n: count() })
+      .from(studies)
+      .where(eq(studies.userId, user.id));
+    const studyCount = countRow.n;
+    if (!canCreateStudy(studyCount, user.studyLimit)) {
+      throw new ForbiddenError("Study limit reached");
+    }
+
     await db.insert(studies).values({
       id: studyId,
       userId: user.id,
@@ -65,6 +75,7 @@ export async function createStudy(type: "tree_test" | "card_sort") {
 
     return { id: studyId };
   } catch (error) {
+    if (error instanceof ForbiddenError) throw error;
     console.error("Failed to create study:", error);
     throw new Error("Failed to create study");
   }

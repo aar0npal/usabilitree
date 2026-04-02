@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CreemCheckout, CreemPortal } from "@creem_io/nextjs";
 import { ExternalLinkIcon, BookOpen, History, Sparkles, CheckCircle2 } from "lucide-react";
 import { STUDIES_PER_PURCHASE } from "@/lib/billing/study-limit";
+import { getBillingUsageMetrics } from "@/lib/billing/billing-usage";
 import { CREEM_API } from "@/lib/constants";
 import { motion, animate, AnimatePresence } from "framer-motion";
 import { containerVariants, cardVariants } from "@/lib/animations";
@@ -138,9 +139,7 @@ export function BillingClient({
     return () => clearInterval(id);
   }, [returnedFromCheckout, router, studyLimit]);
 
-  const usagePercent = Math.min(Math.round((studyCount / studyLimit) * 100), 100);
-  const isAtLimit = studyCount >= studyLimit;
-  const remaining = studyLimit - studyCount;
+  const { usagePercent, isAtLimit, remaining } = getBillingUsageMetrics(studyCount, studyLimit);
 
   const barColorClass =
     usagePercent >= 90 ? "bg-destructive" : usagePercent >= 70 ? "bg-amber-500" : "bg-primary";

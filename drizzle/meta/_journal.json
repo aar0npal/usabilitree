@@ -43,6 +43,13 @@
       "when": 1775087747226,
       "tag": "0005_famous_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1775132234379,
+      "tag": "0006_conscious_tigra",
+      "breakpoints": true
     }
   ]
 }
