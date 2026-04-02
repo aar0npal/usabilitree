@@ -3,7 +3,7 @@
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { studies, treeConfigs, treeTasks, participants, treeTaskResults, users } from "@/db/schema";
+import { studies, treeConfigs, treeTasks, participants, treeTaskResults } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/session";
 import { sampleParticipants } from "./sample-data";
 import { count, eq } from "drizzle-orm";
@@ -16,24 +16,12 @@ class ForbiddenError extends Error {
   }
 }
 
-export async function createSampleTreeTestStudy(userIdLocal?: string) {
-  let userId: string;
-  let studyLimit: number;
+export async function createSampleTreeTestStudy() {
+  const sessionUser = await getCurrentUser();
+  if (!sessionUser) throw new Error("Unauthorized");
 
-  if (userIdLocal !== undefined) {
-    userId = userIdLocal;
-    const [userRow] = await db
-      .select({ studyLimit: users.studyLimit })
-      .from(users)
-      .where(eq(users.id, userId));
-    if (!userRow) throw new Error("Unauthorized");
-    studyLimit = userRow.studyLimit;
-  } else {
-    const sessionUser = await getCurrentUser();
-    if (!sessionUser) throw new Error("Unauthorized");
-    userId = sessionUser.id;
-    studyLimit = sessionUser.studyLimit;
-  }
+  const userId = sessionUser.id;
+  const studyLimit = sessionUser.studyLimit;
 
   const studyId = nanoid();
 

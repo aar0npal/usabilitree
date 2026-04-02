@@ -50,11 +50,9 @@ export async function PricingSection() {
               ))}
             </ul>
 
-            <Link href={Paths.Signup}>
-              <Button variant="outline" className="w-full">
-                Get started free
-              </Button>
-            </Link>
+            <Button asChild variant="outline" className="w-full">
+              <Link href={Paths.Signup}>Get started free</Link>
+            </Button>
           </div>
 
           {/* Pay-as-you-go */}
@@ -92,9 +90,11 @@ export async function PricingSection() {
               </li>
             </ul>
 
-            <Link href={user ? Paths.Billing : Paths.Login}>
-              <Button className="w-full">Get Starter Study Pack &mdash; $5</Button>
-            </Link>
+            <Button asChild className="w-full">
+              <Link href={user ? Paths.Billing : Paths.Login}>
+                Get Starter Study Pack &mdash; $5
+              </Link>
+            </Button>
           </div>
         </div>
 

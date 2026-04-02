@@ -37,7 +37,7 @@ export default function FAQ() {
         <span>
           Yes &mdash; you get 3 studies for free with unlimited participants. Need more? You can
           purchase additional study packs (5 studies for $5, one-time) from your{" "}
-          <Button variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-10">
+          <Button asChild variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-10">
             <Link href="/dashboard/billing">Billing</Link>
           </Button>{" "}
           page.
@@ -56,8 +56,12 @@ export default function FAQ() {
           <br />
           If you don&apos;t like something, please let me know through the Feedback button on the
           dashboard (once logged in) or DM me on{" "}
-          <Button variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-[50px]">
-            <a href="https://discord.com/users/263841596213035009" target="_blank">
+          <Button asChild variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-[50px]">
+            <a
+              href="https://discord.com/users/263841596213035009"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
               Discord
             </a>
           </Button>
@@ -70,15 +74,23 @@ export default function FAQ() {
       answer: (
         <span>
           As a sole developer maintaining this
-          <Button variant="linkHover1" className="ml-1 h-0 p-0 after:-bottom-2 after:w-32">
-            <Link href="https://github.com/ubergonmx/usabilitree" target="_blank">
+          <Button asChild variant="linkHover1" className="ml-1 h-0 p-0 after:-bottom-2 after:w-32">
+            <Link
+              href="https://github.com/ubergonmx/usabilitree"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               open-source project
             </Link>
           </Button>
           , I update it as often as I can. Your support really helps me move faster and keep things
           improving—if you&apos;d like to help boost development:
-          <Button variant="linkHover1" className="ml-1 h-0 p-0 after:-bottom-2 after:w-[35px]">
-            <Link href="https://ko-fi.com/aaronpal" target="_blank">
+          <Button
+            asChild
+            variant="linkHover1"
+            className="ml-1 h-0 p-0 after:-bottom-2 after:w-[35px]"
+          >
+            <Link href="https://ko-fi.com/aaronpal" target="_blank" rel="noopener noreferrer">
               Ko-fi
             </Link>
           </Button>
@@ -86,8 +98,12 @@ export default function FAQ() {
           <br />
           <br />
           You can view the project roadmap and upcoming features at{" "}
-          <Button variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-[55px]">
-            <Link href="https://usabilitree.userjot.com/roadmap" target="_blank">
+          <Button asChild variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-[55px]">
+            <Link
+              href="https://usabilitree.userjot.com/roadmap"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Roadmap
             </Link>
           </Button>
@@ -96,8 +112,12 @@ export default function FAQ() {
           <br />
           In the meantime, if you have any suggestions or requests, feel free to let me know through
           the Feedback button on the dashboard (once logged in) or DM me on{" "}
-          <Button variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-[50px]">
-            <a href="https://discord.com/users/263841596213035009" target="_blank">
+          <Button asChild variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-[50px]">
+            <a
+              href="https://discord.com/users/263841596213035009"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
               Discord
             </a>
           </Button>
@@ -110,14 +130,22 @@ export default function FAQ() {
       answer: (
         <span>
           Please report the bug on{" "}
-          <Button variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-12">
-            <a href="https://github.com/ubergonmx/usabilitree/issues/new" target="_blank">
+          <Button asChild variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-12">
+            <a
+              href="https://github.com/ubergonmx/usabilitree/issues/new"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
               GitHub
             </a>
           </Button>{" "}
           or DM me on{" "}
-          <Button variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-[50px]">
-            <a href="https://discord.com/users/263841596213035009" target="_blank">
+          <Button asChild variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-[50px]">
+            <a
+              href="https://discord.com/users/263841596213035009"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
               Discord
             </a>
           </Button>
@@ -150,12 +178,16 @@ export default function FAQ() {
       </div>
       <h4 className="mb-12 text-center text-sm font-medium tracking-tight text-foreground/80">
         Still have questions? Email us at{" "}
-        <Button variant="linkHover1" className="p-0 after:w-[155px]">
+        <Button asChild variant="linkHover1" className="p-0 after:w-[155px]">
           <a href="mailto:support@usabilitree.com">support@usabilitree.com</a>
         </Button>{" "}
         or DM me on{" "}
-        <Button variant="linkHover1" className="p-0 after:w-12">
-          <a href="https://discord.com/users/263841596213035009" target="_blank">
+        <Button asChild variant="linkHover1" className="p-0 after:w-12">
+          <a
+            href="https://discord.com/users/263841596213035009"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
             Discord
           </a>
         </Button>

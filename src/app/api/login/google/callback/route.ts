@@ -56,7 +56,7 @@ export async function GET(request: Request): Promise<Response> {
         avatar
       );
       await setSession(userId);
-      await createSampleTreeTestStudy(userId);
+      await createSampleTreeTestStudy();
       return new Response(null, {
         status: 302,
         headers: {

@@ -183,7 +183,7 @@ export async function verifyEmail(
 
   await invalidateUserSessions(user.id);
   await setSession(user.id);
-  await createSampleTreeTestStudy(user.id);
+  await createSampleTreeTestStudy();
   redirect(Paths.Dashboard + "?onboarding=1");
 }
 
