@@ -8,13 +8,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { sampleParticipants } from "./sample-data";
 import { count, eq } from "drizzle-orm";
 import { canCreateStudy } from "@/lib/billing/study-limit";
-
-class ForbiddenError extends Error {
-  constructor(message = "Forbidden") {
-    super(message);
-    this.name = "ForbiddenError";
-  }
-}
+import { ForbiddenError } from "@/lib/treetest/forbidden-error";
 
 export async function createSampleTreeTestStudy() {
   const sessionUser = await getCurrentUser();

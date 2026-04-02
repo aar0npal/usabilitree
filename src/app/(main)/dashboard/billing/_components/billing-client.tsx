@@ -148,6 +148,11 @@ export function BillingClient({
       if (attempts >= maxAttempts) {
         clearInterval(id);
         if (typeof window !== "undefined") {
+          toast.info("Your purchase is still processing", {
+            description:
+              "We have not seen your study limit update yet. It usually appears within a minute. Refresh this page or check back shortly.",
+            duration: 8000,
+          });
           router.replace("/dashboard/billing");
         }
       }

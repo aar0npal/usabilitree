@@ -9,13 +9,7 @@ import { desc, and, ne, eq, sql, count } from "drizzle-orm";
 import { StudyFormData, TreeNode } from "@/lib/types/tree-test";
 import { getDefaultLanguage } from "@/lib/languages";
 import { canCreateStudy } from "@/lib/billing/study-limit";
-
-class ForbiddenError extends Error {
-  constructor(message = "Forbidden") {
-    super(message);
-    this.name = "ForbiddenError";
-  }
-}
+import { ForbiddenError } from "@/lib/treetest/forbidden-error";
 
 const defaultLanguage = getDefaultLanguage();
 const defaultWelcomeMessage = defaultLanguage.messages.welcome;
