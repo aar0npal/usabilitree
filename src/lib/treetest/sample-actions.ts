@@ -348,18 +348,24 @@ Feel free to explore more features or start creating your own study.`;
             durationSeconds: participantData.durationSeconds,
           });
 
-          const taskResultsWithIds = taskResults.map((result) => ({
-            id: nanoid(),
-            studyId,
-            participantId: participantId,
-            taskId: tasksToInsert[result.taskIndex]?.id || nanoid(),
-            successful: result.successful,
-            directPathTaken: result.directPathTaken,
-            completionTimeSeconds: result.completionTimeSeconds,
-            confidenceRating: result.confidenceRating,
-            pathTaken: result.pathTaken,
-            skipped: result.skipped,
-          }));
+          const taskResultsWithIds = taskResults.map((result) => {
+            const taskRow = tasksToInsert[result.taskIndex];
+            if (!taskRow) {
+              throw new Error(`Sample data: invalid taskIndex ${result.taskIndex}`);
+            }
+            return {
+              id: nanoid(),
+              studyId,
+              participantId: participantId,
+              taskId: taskRow.id,
+              successful: result.successful,
+              directPathTaken: result.directPathTaken,
+              completionTimeSeconds: result.completionTimeSeconds,
+              confidenceRating: result.confidenceRating,
+              pathTaken: result.pathTaken,
+              skipped: result.skipped,
+            };
+          });
 
           await tx.insert(treeTaskResults).values(taskResultsWithIds);
         }
