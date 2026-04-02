@@ -7,6 +7,6 @@ const apiKey = env.CREEM_API_KEY;
 export const GET = apiKey
   ? Portal({
       apiKey,
-      testMode: env.NODE_ENV !== "production",
+      testMode: env.NEXT_PUBLIC_CREEM_TEST_MODE,
     })
   : async () => NextResponse.json({ error: "Billing portal is not configured" }, { status: 503 });

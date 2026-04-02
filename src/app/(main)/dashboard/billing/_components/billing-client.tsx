@@ -85,7 +85,6 @@ export function BillingClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnedFromCheckout = Boolean(searchParams.get("checkout_id"));
-  const limitBeforeCheckout = React.useRef<number | null>(null);
   const [justPurchased, setJustPurchased] = React.useState(false);
 
   // Snapshot limit before Creem opens — survives the cross-origin redirect back.
@@ -93,28 +92,17 @@ export function BillingClient({
     sessionStorage.setItem("pre_checkout_study_limit", String(studyLimit));
   };
 
-  // On return: prefer sessionStorage snapshot; fall back to one pack below current
-  // in case the webhook already fired before this render (the common fast-path).
-  if (
-    returnedFromCheckout &&
-    limitBeforeCheckout.current === null &&
-    typeof window !== "undefined"
-  ) {
-    const stored = sessionStorage.getItem("pre_checkout_study_limit");
-    limitBeforeCheckout.current =
-      stored !== null ? parseInt(stored, 10) : studyLimit - STUDIES_PER_PURCHASE;
-  }
-  if (!returnedFromCheckout) {
-    limitBeforeCheckout.current = null;
-  }
-
   React.useEffect(() => {
-    if (!returnedFromCheckout || limitBeforeCheckout.current === null) return;
+    if (!returnedFromCheckout) return;
 
-    const baseline = limitBeforeCheckout.current;
-    if (studyLimit > baseline) {
+    const raw = typeof window !== "undefined"
+      ? sessionStorage.getItem("pre_checkout_study_limit")
+      : null;
+    const baseline = raw !== null && raw !== "" ? Number.parseInt(raw, 10) : null;
+    const baselineOk = baseline !== null && Number.isFinite(baseline);
+
+    if (baselineOk && studyLimit > baseline) {
       setJustPurchased(true);
-      limitBeforeCheckout.current = null;
       sessionStorage.removeItem("pre_checkout_study_limit");
       firePurchaseConfetti();
       toast.success(`+${STUDIES_PER_PURCHASE} studies added to your account!`, {
@@ -133,7 +121,12 @@ export function BillingClient({
     const id = setInterval(() => {
       attempts += 1;
       router.refresh();
-      if (attempts >= maxAttempts) clearInterval(id);
+      if (attempts >= maxAttempts) {
+        clearInterval(id);
+        if (typeof window !== "undefined" && !baselineOk) {
+          router.replace("/dashboard/billing");
+        }
+      }
     }, 1200);
 
     return () => clearInterval(id);

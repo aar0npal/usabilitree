@@ -22,7 +22,7 @@ describe("getBillingUsageMetrics", () => {
   it("avoids division by zero when studyLimit is 0", () => {
     expect(getBillingUsageMetrics(0, 0)).toEqual({
       usagePercent: 0,
-      isAtLimit: false,
+      isAtLimit: true,
       remaining: 0,
     });
     expect(getBillingUsageMetrics(2, 0)).toEqual({

@@ -13,8 +13,10 @@ export function getBillingUsageMetrics(studyCount: number, studyLimit: number): 
     return { usagePercent, isAtLimit, remaining };
   }
 
-  const isAtLimit = studyCount > 0;
-  const usagePercent = studyCount > 0 ? 100 : 0;
-  const remaining = 0;
-  return { usagePercent, isAtLimit, remaining };
+  // Limit 0 means no capacity (matches canCreateStudy / server action), even when studyCount is 0.
+  return {
+    usagePercent: studyCount > 0 ? 100 : 0,
+    isAtLimit: true,
+    remaining: 0,
+  };
 }

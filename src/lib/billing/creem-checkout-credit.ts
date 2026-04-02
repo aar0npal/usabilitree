@@ -20,12 +20,16 @@ export async function applyCreemCheckoutCredit(
       return;
     }
 
-    await tx
+    const updated = await tx
       .update(schema.users)
       .set({
         studyLimit: sql`${schema.users.studyLimit} + ${STUDIES_PER_PURCHASE}`,
         ...(customerId ? { creemCustomerId: customerId } : {}),
       })
       .where(eq(schema.users.id, userId));
+
+    if (updated.rowsAffected === 0) {
+      throw new Error("Creem checkout credit: no user row for referenceId");
+    }
   });
 }
