@@ -1,10 +1,18 @@
 "use client";
 
+/**
+ * Dev-only: this module is loaded only via `dynamic()` when NODE_ENV === "development"
+ * from billing-client (see BillingConfettiDev). Do not import it from production paths.
+ */
+
 import * as React from "react";
 import { LevaPanel, useControls, useCreateStore, folder, button } from "leva";
+import { toast } from "sonner";
 import {
   DEFAULT_PURCHASE_CONFETTI_PARAMS,
   firePurchaseConfetti,
+  formatConfettiParamsForPaste,
+  getPurchaseConfettiParams,
   setPurchaseConfettiParams,
   type PurchaseConfettiParams,
 } from "../_lib/purchase-confetti";
@@ -221,6 +229,17 @@ export default function BillingConfettiDev() {
       actions: folder({
         "Test burst": button(() => {
           firePurchaseConfetti();
+        }),
+        "Copy config (paste to update defaults)": button(() => {
+          const text = formatConfettiParamsForPaste(getPurchaseConfettiParams());
+          void navigator.clipboard.writeText(text).then(
+            () =>
+              toast.success("Confetti config copied", {
+                description:
+                  "Paste into chat or replace DEFAULT_PURCHASE_CONFETTI_PARAMS in purchase-confetti.ts.",
+              }),
+            () => toast.error("Could not copy", { description: "Check clipboard permissions." })
+          );
         }),
       }),
     }),
