@@ -74,7 +74,15 @@ export const NewStudy = ({
           router.push("/dashboard");
         }
       } catch (error) {
-        toast.error("Failed to create study");
+        const limitReached =
+          error instanceof Error &&
+          (error.name === "ForbiddenError" || error.message === "Study limit reached");
+        if (limitReached) {
+          toast.error("Study limit reached");
+          setShowUpgradeDialog(true);
+        } else {
+          toast.error("Failed to create study");
+        }
         Sentry.captureException(error);
       }
     });

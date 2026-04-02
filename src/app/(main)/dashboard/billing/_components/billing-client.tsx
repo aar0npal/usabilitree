@@ -43,34 +43,59 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
   return <span className={className}>{display}</span>;
 }
 
+type ConfettiPiece = {
+  color: string;
+  x: number;
+  delay: number;
+  size: number;
+  endY: number;
+  rotate: number;
+  driftX: number;
+  duration: number;
+};
+
 function ConfettiBurst() {
-  const pieces = Array.from({ length: 20 }, (_, i) => i);
-  const colors = ["#22c55e", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6"];
+  const pieces = React.useMemo((): ConfettiPiece[] => {
+    const colors = ["#22c55e", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6"];
+    return Array.from({ length: 20 }, (_, i) => {
+      const color = colors[i % colors.length];
+      return {
+        color,
+        x: Math.random() * 100,
+        delay: Math.random() * 0.4,
+        size: 6 + Math.random() * 6,
+        endY: 120 + Math.random() * 80,
+        rotate: Math.random() > 0.5 ? 360 : -360,
+        driftX: (Math.random() - 0.5) * 60,
+        duration: 1 + Math.random() * 0.5,
+      };
+    });
+  }, []);
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
-      {pieces.map((i) => {
-        const color = colors[i % colors.length];
-        const x = Math.random() * 100;
-        const delay = Math.random() * 0.4;
-        const size = 6 + Math.random() * 6;
-        return (
-          <motion.div
-            key={i}
-            className="absolute rounded-sm"
-            style={{ left: `${x}%`, top: "-8px", width: size, height: size, background: color }}
-            initial={{ y: 0, opacity: 1, rotate: 0, scale: 1 }}
-            animate={{
-              y: 120 + Math.random() * 80,
-              opacity: [1, 1, 0],
-              rotate: Math.random() > 0.5 ? 360 : -360,
-              scale: [1, 0.8],
-              x: (Math.random() - 0.5) * 60,
-            }}
-            transition={{ duration: 1 + Math.random() * 0.5, delay, ease: [0.2, 0, 0.8, 1] }}
-          />
-        );
-      })}
+      {pieces.map((p, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-sm"
+          style={{
+            left: `${p.x}%`,
+            top: "-8px",
+            width: p.size,
+            height: p.size,
+            background: p.color,
+          }}
+          initial={{ y: 0, opacity: 1, rotate: 0, scale: 1 }}
+          animate={{
+            y: p.endY,
+            opacity: [1, 1, 0],
+            rotate: p.rotate,
+            scale: [1, 0.8],
+            x: p.driftX,
+          }}
+          transition={{ duration: p.duration, delay: p.delay, ease: [0.2, 0, 0.8, 1] }}
+        />
+      ))}
     </div>
   );
 }
@@ -122,7 +147,7 @@ export function BillingClient({
       router.refresh();
       if (attempts >= maxAttempts) {
         clearInterval(id);
-        if (typeof window !== "undefined" && !baselineOk) {
+        if (typeof window !== "undefined") {
           router.replace("/dashboard/billing");
         }
       }

@@ -2,7 +2,11 @@ import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 import { parseOptionalNonNegativeInt } from "@/lib/parse-env-int";
 
-export const env = createEnv({
+function isLocalDatabaseUrl(url: string): boolean {
+  return url.startsWith("file:") || url.includes(":memory:");
+}
+
+const envInternal = createEnv({
   server: {
     NODE_ENV: z.enum(["development", "production", "test"]),
     DATABASE_URL: z.string().trim().min(1),
@@ -65,3 +69,14 @@ export const env = createEnv({
   },
   emptyStringAsUndefined: true,
 });
+
+if (
+  !isLocalDatabaseUrl(envInternal.DATABASE_URL) &&
+  envInternal.DATABASE_AUTH_TOKEN === undefined
+) {
+  throw new Error(
+    "DATABASE_AUTH_TOKEN is required when DATABASE_URL is a remote Turso or libsql URL (omit the token only for file: or :memory: databases)."
+  );
+}
+
+export const env = envInternal;

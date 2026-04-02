@@ -3,13 +3,28 @@
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { studies, treeConfigs, treeTasks, participants, treeTaskResults } from "@/db/schema";
+import { studies, treeConfigs, treeTasks, participants, treeTaskResults, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/session";
 import { sampleParticipants } from "./sample-data";
+import { count, eq } from "drizzle-orm";
+import { canCreateStudy } from "@/lib/billing/study-limit";
+
+class ForbiddenError extends Error {
+  constructor(message = "Forbidden") {
+    super(message);
+    this.name = "ForbiddenError";
+  }
+}
 
 export async function createSampleTreeTestStudy(userIdLocal?: string) {
   const userId = userIdLocal ?? (await getCurrentUser())?.id;
   if (!userId) throw new Error("Unauthorized");
+
+  const [userRow] = await db
+    .select({ studyLimit: users.studyLimit })
+    .from(users)
+    .where(eq(users.id, userId));
+  if (!userRow) throw new Error("Unauthorized");
 
   const studyId = nanoid();
 
@@ -269,78 +284,93 @@ Feel free to explore more features or start creating your own study.`;
     },
   ];
 
+  const tasksToInsert = sampleTasks.map((task, index) => ({
+    id: nanoid(),
+    studyId: studyId,
+    taskIndex: index,
+    description: task.description,
+    expectedAnswer: task.expectedAnswer,
+  }));
+
   try {
-    await db.insert(studies).values({
-      id: studyId,
-      userId: userId,
-      title: "Sample tree test",
-      description: "Government website example",
-      status: "active", // Make it active as requested
-      type: "tree_test",
-      // Let database handle timestamps automatically
-    });
+    await db.transaction(
+      async (tx) => {
+        const [countRow] = await tx
+          .select({ n: count() })
+          .from(studies)
+          .where(eq(studies.userId, userId));
+        if (!canCreateStudy(countRow.n, userRow.studyLimit)) {
+          throw new ForbiddenError("Study limit reached");
+        }
 
-    await db.insert(treeConfigs).values({
-      id: nanoid(),
-      studyId: studyId,
-      treeStructure: treeStructure,
-      parsedTree: JSON.stringify(parsedTree),
-      welcomeMessage: welcomeMessage,
-      completionMessage: completionMessage,
-    });
+        await tx.insert(studies).values({
+          id: studyId,
+          userId: userId,
+          title: "Sample tree test",
+          description: "Government website example",
+          status: "active", // Make it active as requested
+          type: "tree_test",
+        });
 
-    // Insert sample tasks
-    const tasksToInsert = sampleTasks.map((task, index) => ({
-      id: nanoid(),
-      studyId: studyId,
-      taskIndex: index,
-      description: task.description,
-      expectedAnswer: task.expectedAnswer,
-      // Let database handle timestamps automatically
-    }));
+        await tx.insert(treeConfigs).values({
+          id: nanoid(),
+          studyId: studyId,
+          treeStructure: treeStructure,
+          parsedTree: JSON.stringify(parsedTree),
+          welcomeMessage: welcomeMessage,
+          completionMessage: completionMessage,
+        });
 
-    if (tasksToInsert.length > 0) {
-      await db.insert(treeTasks).values(tasksToInsert);
-    }
+        if (tasksToInsert.length > 0) {
+          await tx.insert(treeTasks).values(tasksToInsert);
+        }
 
-    // Insert participants and their task results
-    for (const participant of sampleParticipants) {
-      const { taskResults, ...participantData } = participant;
+        for (const participant of sampleParticipants) {
+          const { taskResults, ...participantData } = participant;
 
-      const participantId = nanoid();
+          const participantId = nanoid();
 
-      // Insert participant with explicit field mapping to avoid any spread operator issues
-      await db.insert(participants).values({
-        id: participantId,
-        studyId,
-        sessionId: nanoid(),
-        startedAt: participantData.startedAt, // This should be a Date object that Drizzle converts to timestamp
-        completedAt: participantData.completedAt, // This should be a Date object that Drizzle converts to timestamp
-        durationSeconds: participantData.durationSeconds, // This should be an integer (seconds)
-      });
+          await tx.insert(participants).values({
+            id: participantId,
+            studyId,
+            sessionId: nanoid(),
+            startedAt: participantData.startedAt,
+            completedAt: participantData.completedAt,
+            durationSeconds: participantData.durationSeconds,
+          });
 
-      // Insert task results for this participant
-      const taskResultsWithIds = taskResults.map((result) => ({
-        id: nanoid(),
-        studyId,
-        participantId: participantId,
-        taskId: tasksToInsert[result.taskIndex]?.id || nanoid(), // Map taskIndex to actual task ID
-        successful: result.successful,
-        directPathTaken: result.directPathTaken,
-        completionTimeSeconds: result.completionTimeSeconds,
-        confidenceRating: result.confidenceRating,
-        pathTaken: result.pathTaken,
-        skipped: result.skipped,
-        // Let database handle timestamps automatically
-      }));
+          const taskResultsWithIds = taskResults.map((result) => ({
+            id: nanoid(),
+            studyId,
+            participantId: participantId,
+            taskId: tasksToInsert[result.taskIndex]?.id || nanoid(),
+            successful: result.successful,
+            directPathTaken: result.directPathTaken,
+            completionTimeSeconds: result.completionTimeSeconds,
+            confidenceRating: result.confidenceRating,
+            pathTaken: result.pathTaken,
+            skipped: result.skipped,
+          }));
 
-      await db.insert(treeTaskResults).values(taskResultsWithIds);
-    }
+          await tx.insert(treeTaskResults).values(taskResultsWithIds);
+        }
+
+        const [afterRow] = await tx
+          .select({ n: count() })
+          .from(studies)
+          .where(eq(studies.userId, userId));
+        if (afterRow.n > userRow.studyLimit) {
+          throw new ForbiddenError("Study limit reached");
+        }
+      },
+      { behavior: "immediate" }
+    );
 
     revalidatePath("/dashboard");
 
     return { id: studyId };
   } catch (error) {
+    if (error instanceof ForbiddenError) throw error;
     console.error("Failed to create sample study:", error);
     throw new Error("Failed to create sample study");
   }
