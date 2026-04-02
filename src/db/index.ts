@@ -10,7 +10,7 @@ const client = createClient({
   authToken:
     databaseUrl.startsWith("file:") || databaseUrl === ":memory:"
       ? undefined
-      : env.DATABASE_AUTH_TOKEN,
+      : (env.DATABASE_AUTH_TOKEN ?? undefined),
 });
 
 export const db = drizzle(client, { schema });

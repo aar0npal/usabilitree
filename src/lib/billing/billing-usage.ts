@@ -5,7 +5,10 @@ export type BillingUsageMetrics = {
 };
 
 /** Derives billing UI metrics; safe when studyLimit is 0 (no division by zero). */
-export function getBillingUsageMetrics(studyCount: number, studyLimit: number): BillingUsageMetrics {
+export function getBillingUsageMetrics(
+  studyCount: number,
+  studyLimit: number
+): BillingUsageMetrics {
   if (studyLimit > 0) {
     const usagePercent = Math.min(Math.round((studyCount / studyLimit) * 100), 100);
     const isAtLimit = studyCount >= studyLimit;

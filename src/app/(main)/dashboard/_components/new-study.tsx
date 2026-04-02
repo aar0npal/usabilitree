@@ -22,6 +22,7 @@ import { createStudy } from "@/lib/treetest/actions";
 import { createSampleTreeTestStudy } from "@/lib/treetest/sample-actions";
 import * as Sentry from "@sentry/react";
 import { CREEM_API } from "@/lib/constants";
+import { STUDIES_PER_PURCHASE } from "@/lib/billing/study-limit";
 
 const MotionButton = motion.create(Button);
 
@@ -139,14 +140,14 @@ function UpgradeDialog({
         <DialogHeader>
           <DialogTitle>Study Limit Reached</DialogTitle>
           <DialogDescription>
-            You&apos;ve used {studyCount} of {studyLimit} studies. Get 5 more for a one-time $5
-            payment.
+            You&apos;ve used {studyCount} of {studyLimit} studies. Get {STUDIES_PER_PURCHASE} more
+            for a one-time $5 payment.
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-lg border bg-muted/40 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">+5 Studies</p>
+              <p className="font-medium">+{STUDIES_PER_PURCHASE} Studies</p>
               <p className="text-sm text-muted-foreground">
                 Stackable &mdash; buy as many times as you need
               </p>
@@ -170,7 +171,7 @@ function UpgradeDialog({
                   sessionStorage.setItem("pre_checkout_study_limit", String(studyLimit))
                 }
               >
-                Get 5 More Studies &mdash; $5
+                Get {STUDIES_PER_PURCHASE} More Studies &mdash; $5
               </Button>
             </CreemCheckout>
           ) : (

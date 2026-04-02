@@ -22,3 +22,5 @@ jobs:
         run: npm run format:check
       - name: Run oxlint
         run: npm run lint
+      - name: Run tests
+        run: npm run test

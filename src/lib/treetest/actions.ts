@@ -31,47 +31,58 @@ export async function createStudy(type: "tree_test" | "card_sort") {
   const studyId = nanoid();
 
   try {
-    await db.transaction(async (tx) => {
-      const [countRow] = await tx
-        .select({ n: count() })
-        .from(studies)
-        .where(eq(studies.userId, user.id));
-      const studyCount = countRow.n;
-      if (!canCreateStudy(studyCount, user.studyLimit)) {
-        throw new ForbiddenError("Study limit reached");
-      }
+    await db.transaction(
+      async (tx) => {
+        const [countRow] = await tx
+          .select({ n: count() })
+          .from(studies)
+          .where(eq(studies.userId, user.id));
+        const studyCount = countRow.n;
+        if (!canCreateStudy(studyCount, user.studyLimit)) {
+          throw new ForbiddenError("Study limit reached");
+        }
 
-      await tx.insert(studies).values({
-        id: studyId,
-        userId: user.id,
-        title: "Untitled Study",
-        description: "",
-        status: "draft",
-        type: type,
-      });
+        await tx.insert(studies).values({
+          id: studyId,
+          userId: user.id,
+          title: "Untitled Study",
+          description: "",
+          status: "draft",
+          type: type,
+        });
 
-      await tx.insert(treeConfigs).values({
-        id: nanoid(),
-        studyId: studyId,
-        treeStructure: "",
-        parsedTree: JSON.stringify([]),
-        welcomeMessage: defaultWelcomeMessage,
-        completionMessage: defaultCompletionMessage,
-        instructionsText: defaultCustomText.instructions,
-        startTestText: defaultCustomText.startTest,
-        findItHereText: defaultCustomText.findItHere,
-        startTaskText: defaultCustomText.startTask,
-        confidenceQuestionText: defaultCustomText.confidenceQuestion,
-        stronglyAgreeText: defaultCustomText.stronglyAgree,
-        stronglyDisagreeText: defaultCustomText.stronglyDisagree,
-        taskProgressText: defaultCustomText.taskProgress,
-        skipTaskText: defaultCustomText.skipTask,
-        submitContinueText: defaultCustomText.submitContinue,
-        completedMessageText: defaultCustomText.completedMessage,
-        nextButtonText: defaultCustomText.nextButton,
-        confidenceDescriptionText: defaultCustomText.confidenceDescription,
-      });
-    });
+        await tx.insert(treeConfigs).values({
+          id: nanoid(),
+          studyId: studyId,
+          treeStructure: "",
+          parsedTree: JSON.stringify([]),
+          welcomeMessage: defaultWelcomeMessage,
+          completionMessage: defaultCompletionMessage,
+          instructionsText: defaultCustomText.instructions,
+          startTestText: defaultCustomText.startTest,
+          findItHereText: defaultCustomText.findItHere,
+          startTaskText: defaultCustomText.startTask,
+          confidenceQuestionText: defaultCustomText.confidenceQuestion,
+          stronglyAgreeText: defaultCustomText.stronglyAgree,
+          stronglyDisagreeText: defaultCustomText.stronglyDisagree,
+          taskProgressText: defaultCustomText.taskProgress,
+          skipTaskText: defaultCustomText.skipTask,
+          submitContinueText: defaultCustomText.submitContinue,
+          completedMessageText: defaultCustomText.completedMessage,
+          nextButtonText: defaultCustomText.nextButton,
+          confidenceDescriptionText: defaultCustomText.confidenceDescription,
+        });
+
+        const [afterRow] = await tx
+          .select({ n: count() })
+          .from(studies)
+          .where(eq(studies.userId, user.id));
+        if (afterRow.n > user.studyLimit) {
+          throw new ForbiddenError("Study limit reached");
+        }
+      },
+      { behavior: "immediate" }
+    );
 
     revalidatePath("/dashboard");
 

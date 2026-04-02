@@ -12,7 +12,7 @@ export default defineConfig({
     authToken:
       databaseUrl.startsWith("file:") || databaseUrl === ":memory:"
         ? undefined
-        : env.DATABASE_AUTH_TOKEN,
+        : (env.DATABASE_AUTH_TOKEN ?? undefined),
   },
   verbose: true,
   strict: true,

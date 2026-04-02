@@ -95,9 +95,8 @@ export function BillingClient({
   React.useEffect(() => {
     if (!returnedFromCheckout) return;
 
-    const raw = typeof window !== "undefined"
-      ? sessionStorage.getItem("pre_checkout_study_limit")
-      : null;
+    const raw =
+      typeof window !== "undefined" ? sessionStorage.getItem("pre_checkout_study_limit") : null;
     const baseline = raw !== null && raw !== "" ? Number.parseInt(raw, 10) : null;
     const baselineOk = baseline !== null && Number.isFinite(baseline);
 

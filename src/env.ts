@@ -6,7 +6,8 @@ export const env = createEnv({
   server: {
     NODE_ENV: z.enum(["development", "production", "test"]),
     DATABASE_URL: z.string().trim().min(1),
-    DATABASE_AUTH_TOKEN: z.string().trim().min(1),
+    /** Omit for `file:` / `:memory:` URLs; required for remote Turso/libsql. */
+    DATABASE_AUTH_TOKEN: z.string().trim().min(1).optional(),
     DISCORD_CLIENT_ID: z.string().trim().min(1),
     DISCORD_CLIENT_SECRET: z.string().trim().min(1),
     DISCORD_BOT_TOKEN: z.string().trim().min(1),

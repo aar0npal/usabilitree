@@ -18,13 +18,13 @@ export const POST = webhookSecret
       onCheckoutCompleted: async ({ customer, metadata, webhookId }) => {
         if (!webhookId) {
           console.error("[creem/webhook] checkout.completed missing webhookId");
-          return;
+          throw new Error("missing webhookId");
         }
 
         const userId = metadata?.referenceId as string | undefined;
         if (!userId) {
-          console.error("[creem/webhook] checkout.completed missing referenceId");
-          return;
+          console.error("[creem/webhook] checkout.completed missing metadata.referenceId");
+          throw new Error("missing referenceId");
         }
 
         await applyCreemCheckoutCredit(
@@ -33,7 +33,7 @@ export const POST = webhookSecret
             userId,
             customerId: customer?.id,
           },
-          db,
+          db
         );
 
         revalidatePath("/dashboard/billing");

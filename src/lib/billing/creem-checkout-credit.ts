@@ -5,7 +5,7 @@ import { STUDIES_PER_PURCHASE } from "./study-limit";
 
 export async function applyCreemCheckoutCredit(
   opts: { webhookId: string; userId: string; customerId?: string },
-  database: LibSQLDatabase<typeof schema>,
+  database: LibSQLDatabase<typeof schema>
 ): Promise<void> {
   const { webhookId, userId, customerId } = opts;
 
@@ -29,7 +29,7 @@ export async function applyCreemCheckoutCredit(
       .where(eq(schema.users.id, userId));
 
     if (updated.rowsAffected === 0) {
-      throw new Error("Creem checkout credit: no user row for referenceId");
+      throw new Error("Creem checkout credit: no user row for userId");
     }
   });
 }

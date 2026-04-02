@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Paths } from "@/lib/constants";
-import { STUDIES_PER_PURCHASE } from "@/lib/billing/study-limit";
+import { STUDIES_PER_PURCHASE, DEFAULT_STUDY_LIMIT } from "@/lib/billing/study-limit";
 import { getCurrentUser } from "@/lib/auth/session";
 import Section from "../_components/section";
 
-const FREE_LIMIT = 3;
+const FREE_LIMIT = DEFAULT_STUDY_LIMIT;
 
 const features = [
   "Unlimited participants per study",

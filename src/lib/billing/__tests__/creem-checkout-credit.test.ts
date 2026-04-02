@@ -38,7 +38,7 @@ describe("applyCreemCheckoutCredit", () => {
   it("increments study limit on first webhook id", async () => {
     await applyCreemCheckoutCredit(
       { webhookId: "evt_first", userId: "user_test_webhook_01" },
-      memDb,
+      memDb
     );
 
     const [row] = await memDb
@@ -52,7 +52,7 @@ describe("applyCreemCheckoutCredit", () => {
   it("does not increment again for the same webhook id", async () => {
     await applyCreemCheckoutCredit(
       { webhookId: "evt_first", userId: "user_test_webhook_01" },
-      memDb,
+      memDb
     );
 
     const [row] = await memDb
@@ -66,7 +66,7 @@ describe("applyCreemCheckoutCredit", () => {
   it("applies a new credit for a different webhook id", async () => {
     await applyCreemCheckoutCredit(
       { webhookId: "evt_second", userId: "user_test_webhook_01" },
-      memDb,
+      memDb
     );
 
     const [row] = await memDb
@@ -81,8 +81,8 @@ describe("applyCreemCheckoutCredit", () => {
     await expect(
       applyCreemCheckoutCredit(
         { webhookId: "evt_missing_user", userId: "user_does_not_exist" },
-        memDb,
-      ),
+        memDb
+      )
     ).rejects.toThrow(/no user row/);
 
     const rows = await memDb
