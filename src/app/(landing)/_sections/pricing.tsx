@@ -10,7 +10,7 @@ const FREE_LIMIT = 3;
 const features = [
   "Unlimited participants per study",
   "Full results & analytics",
-  "Export to CSV / XLSX",
+  "Export to Excel (.xlsx)",
   "Collaboration sharing",
 ];
 
@@ -86,12 +86,10 @@ export async function PricingSection() {
                 <span className="text-primary">&#10003;</span>
                 No subscription, no recurring charges
               </li>
-              {features.map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <span className="text-primary">&#10003;</span>
-                  {f}
-                </li>
-              ))}
+              <li className="flex items-center gap-2">
+                <span className="text-primary">&#10003;</span>
+                Includes everything in Free
+              </li>
             </ul>
 
             <Link href={user ? Paths.Billing : Paths.Login}>
