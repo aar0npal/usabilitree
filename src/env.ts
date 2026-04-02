@@ -19,9 +19,18 @@ export const env = createEnv({
     SMTP_PORT: z.number().int().min(1),
     SMTP_USER: z.string().trim().min(1),
     SMTP_PASSWORD: z.string().trim().min(1),
-    STUDY_LIMIT: z.number().int().min(0).default(6),
+    STUDY_LIMIT: z.number().int().min(0).default(3),
+    // Creem integration — optional in development so the app can boot
+    // without payments fully configured. For production, set real values.
+    CREEM_API_KEY: z.string().trim().min(1).optional(),
+    CREEM_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
   },
   client: {
+    NEXT_PUBLIC_CREEM_TEST_MODE: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((v) => v === "true"),
+    NEXT_PUBLIC_CREEM_PRODUCT_ID: z.string().trim().min(1).optional(),
     NEXT_PUBLIC_APP_URL: z.string().url(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().trim().min(1),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
@@ -30,6 +39,8 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_CREEM_TEST_MODE: process.env.NEXT_PUBLIC_CREEM_TEST_MODE,
+    NEXT_PUBLIC_CREEM_PRODUCT_ID: process.env.NEXT_PUBLIC_CREEM_PRODUCT_ID,
     NODE_ENV: process.env.NODE_ENV,
     DATABASE_URL: process.env.DATABASE_URL,
     DATABASE_AUTH_TOKEN: process.env.DATABASE_AUTH_TOKEN,
@@ -47,6 +58,8 @@ export const env = createEnv({
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     STUDY_LIMIT: parseInt(process.env.STUDY_LIMIT ?? ""),
+    CREEM_API_KEY: process.env.CREEM_API_KEY,
+    CREEM_WEBHOOK_SECRET: process.env.CREEM_WEBHOOK_SECRET,
   },
   emptyStringAsUndefined: true,
 });

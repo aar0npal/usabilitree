@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileTextIcon, GearIcon, BellIcon } from "@/components/icons";
+import { FileTextIcon, GearIcon, BellIcon, CreditCard } from "@/components/icons";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { FeedbackButton } from "@/components/feedback-button";
@@ -13,7 +13,7 @@ import { usePostHog } from "posthog-js/react";
 
 // Store the latest update date in a constant at the top of the file
 // This makes it easier to update in one place when new content is added
-const LATEST_UPDATE_DATE = "2026-03-17"; // Update this when new content is added
+const LATEST_UPDATE_DATE = "2026-04-02"; // Update this when new content is added
 
 const items = [
   {
@@ -21,11 +21,11 @@ const items = [
     href: "/dashboard",
     icon: FileTextIcon,
   },
-  // {
-  //   title: "Billing",
-  //   href: "/dashboard/billing",
-  //   icon: CreditCard,
-  // },
+  {
+    title: "Billing",
+    href: "/dashboard/billing",
+    icon: CreditCard,
+  },
   {
     id: DASHBOARD_TOUR_STEP_IDS.UPDATES,
     title: "Updates",

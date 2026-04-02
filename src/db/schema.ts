@@ -9,12 +9,8 @@ export const users = sqliteTable("users", {
   emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
   hashedPassword: text("hashed_password", { length: 255 }),
   avatar: text("avatar", { length: 255 }),
-  stripeSubscriptionId: text("stripe_subscription_id", { length: 191 }),
-  stripePriceId: text("stripe_price_id", { length: 191 }),
-  stripeCustomerId: text("stripe_customer_id", { length: 191 }),
-  stripeCurrentPeriodEnd: integer("stripe_current_period_end", {
-    mode: "timestamp",
-  }),
+  creemCustomerId: text("creem_customer_id", { length: 255 }),
+  studyLimit: integer("study_limit").notNull().default(3),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(STRFTIME('%s', 'now') * 1000)`),

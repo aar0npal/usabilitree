@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { FilePlusIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CreemCheckout } from "@creem_io/nextjs";
 
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -19,24 +21,41 @@ import { toast } from "sonner";
 import { createStudy } from "@/lib/treetest/actions";
 import { createSampleTreeTestStudy } from "@/lib/treetest/sample-actions";
 import * as Sentry from "@sentry/react";
+import { CREEM_API } from "@/lib/constants";
+
+const MotionButton = motion.create(Button);
 
 interface NewPostProps {
   isEligible: boolean;
+  userId: string;
+  studyLimit: number;
+  studyCount: number;
+  creemProductId?: string;
+  index?: number;
 }
 
-export const NewStudy = ({ isEligible }: NewPostProps) => {
+export const NewStudy = ({
+  isEligible,
+  userId,
+  studyLimit,
+  studyCount,
+  creemProductId,
+  index = 0,
+}: NewPostProps) => {
   const router = useRouter();
   const [isCreatePending, startCreateTransaction] = React.useTransition();
-  const [showDialog, setShowDialog] = React.useState(false);
+  const [showTypeDialog, setShowTypeDialog] = React.useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = React.useState(false);
 
-  const createPost = (type: "tree_test" | "card_sort" | "sample_tree_test") => {
+  const handleClick = () => {
     if (!isEligible) {
-      toast.message("You've reached the limit of posts for your current plan", {
-        description: "Upgrade to create more posts",
-      });
+      setShowUpgradeDialog(true);
       return;
     }
+    setShowTypeDialog(true);
+  };
 
+  const createPost = (type: "tree_test" | "card_sort" | "sample_tree_test") => {
     startCreateTransaction(async () => {
       try {
         let result;
@@ -48,11 +67,9 @@ export const NewStudy = ({ isEligible }: NewPostProps) => {
           toast.success("Study created successfully");
         }
 
-        // Navigate to the setup page for tree tests
         if (type === "tree_test" || type === "sample_tree_test") {
           router.push(`/treetest/setup/${result.id}`);
         } else {
-          // For future card sort implementation
           router.push("/dashboard");
         }
       } catch (error) {
@@ -64,28 +81,108 @@ export const NewStudy = ({ isEligible }: NewPostProps) => {
 
   return (
     <>
-      <Button
-        onClick={() => setShowDialog(true)}
+      <MotionButton
+        onClick={handleClick}
         className="flex h-full cursor-pointer items-center justify-center bg-card p-6 text-muted-foreground transition-colors hover:bg-secondary/10 dark:border-none dark:bg-secondary/30 dark:hover:bg-secondary/50"
         disabled={isCreatePending}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1], delay: index * 0.04 }}
       >
         <div className="flex flex-col items-center gap-4">
           <FilePlusIcon className="h-10 w-10" />
           <p className="text-sm">New Study</p>
         </div>
-      </Button>
+      </MotionButton>
 
       <StudyTypeDialog
-        open={showDialog}
-        onOpenChange={setShowDialog}
+        open={showTypeDialog}
+        onOpenChange={setShowTypeDialog}
         onSelect={(type) => {
-          setShowDialog(false);
+          setShowTypeDialog(false);
           createPost(type);
         }}
+      />
+
+      <UpgradeDialog
+        open={showUpgradeDialog}
+        onOpenChange={setShowUpgradeDialog}
+        userId={userId}
+        studyLimit={studyLimit}
+        studyCount={studyCount}
+        creemProductId={creemProductId}
       />
     </>
   );
 };
+
+interface UpgradeDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  userId: string;
+  studyLimit: number;
+  studyCount: number;
+  creemProductId?: string;
+}
+
+function UpgradeDialog({
+  open,
+  onOpenChange,
+  userId,
+  studyLimit,
+  studyCount,
+  creemProductId,
+}: UpgradeDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>Study Limit Reached</DialogTitle>
+          <DialogDescription>
+            You&apos;ve used {studyCount} of {studyLimit} studies. Get 5 more for a one-time $5
+            payment.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-lg border bg-muted/40 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">+5 Studies</p>
+              <p className="text-sm text-muted-foreground">
+                Stackable &mdash; buy as many times as you need
+              </p>
+            </div>
+            <span className="text-xl font-bold">$5</span>
+          </div>
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          {creemProductId ? (
+            <CreemCheckout
+              checkoutPath={CREEM_API.checkout}
+              productId={creemProductId}
+              referenceId={userId}
+              successUrl="/dashboard/billing"
+            >
+              <Button
+                onClick={() =>
+                  sessionStorage.setItem("pre_checkout_study_limit", String(studyLimit))
+                }
+              >
+                Get 5 More Studies &mdash; $5
+              </Button>
+            </CreemCheckout>
+          ) : (
+            <Button disabled title="Set NEXT_PUBLIC_CREEM_PRODUCT_ID">
+              Checkout unavailable
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 interface StudyTypeDialogProps {
   open: boolean;

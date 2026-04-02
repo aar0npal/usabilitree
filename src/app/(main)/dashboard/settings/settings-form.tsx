@@ -1,5 +1,7 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { containerVariants, cardVariants } from "@/lib/animations";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -148,48 +150,56 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-            <CardDescription>Update your personal details and profile picture</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center gap-6">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={user.avatar || "/placeholder-avatar.png"} />
-                <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div>
-                <Label htmlFor="avatar" className="mb-2 block">
-                  Profile Picture
-                </Label>
-                <Input
-                  id="avatar"
-                  type="file"
-                  accept="image/*"
-                  // onChange={handleAvatarUpload}
-                  className="max-w-xs"
-                  disabled
-                />
+      <motion.form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={cardVariants}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Personal Information</CardTitle>
+              <CardDescription>Update your personal details and profile picture</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center gap-6">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={user.avatar || "/placeholder-avatar.png"} />
+                  <AvatarFallback>{user.email.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <Label htmlFor="avatar" className="mb-2 block">
+                    Profile Picture
+                  </Label>
+                  <Input
+                    id="avatar"
+                    type="file"
+                    accept="image/*"
+                    // onChange={handleAvatarUpload}
+                    className="max-w-xs"
+                    disabled
+                  />
+                </div>
               </div>
-            </div>
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="email" placeholder="Enter your email" disabled />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="Enter your email" disabled />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* <Card>
           <CardHeader>
@@ -252,131 +262,137 @@ export function SettingsForm({ user }: SettingsFormProps) {
         </Card> */}
 
         {user.hashedPassword && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Settings</CardTitle>
-              <CardDescription>Update your password</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="password.current"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current Password</FormLabel>
-                      <FormControl>
-                        <PasswordInput {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <motion.div variants={cardVariants}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Settings</CardTitle>
+                <CardDescription>Update your password</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="password.current"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Current Password</FormLabel>
+                        <FormControl>
+                          <PasswordInput {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="password.new"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>New Password</FormLabel>
-                      <FormControl>
-                        <PasswordInput {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="password.new"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>New Password</FormLabel>
+                        <FormControl>
+                          <PasswordInput {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="password.confirm"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm New Password</FormLabel>
-                      <FormControl>
-                        <PasswordInput {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle>Help Shape the Future</CardTitle>
-            <CardDescription>
-              Share your detailed feedback to help improve UsabiliTree. Your insights are invaluable
-              for the upcoming overhaul!
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-lg bg-muted p-4">
-              <p className="text-sm text-muted-foreground">
-                🎁 <strong>Special Thank You:</strong> Users who complete the detailed feedback
-                survey will receive a secret discount code for future paid plans (when available).
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => triggerFeedbackRequest("settings_page")}
-              className="w-full"
-            >
-              Share Detailed Feedback
-            </Button>
-          </CardContent>
-        </Card>
-
-        <div className="flex items-center justify-between">
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <AnimatedSpinner className="mr-2 h-4 w-4" />}
-            Save Changes
-          </Button>
-
-          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="destructive">Delete Account</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete Account</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete your account? This action cannot be undone. Please
-                  type your email to confirm.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-confirm">Email</Label>
-                  <Input
-                    id="email-confirm"
-                    placeholder={user.email}
-                    value={deleteConfirmEmail}
-                    onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                  <FormField
+                    control={form.control}
+                    name="password.confirm"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm New Password</FormLabel>
+                        <FormControl>
+                          <PasswordInput {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        <motion.div variants={cardVariants}>
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle>Help Shape the Future</CardTitle>
+              <CardDescription>
+                Share your detailed feedback to help improve UsabiliTree. Your insights are
+                invaluable for the upcoming overhaul!
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm text-muted-foreground">
+                  🎁 <strong>Special Thank You:</strong> Users who complete the detailed feedback
+                  survey will receive a discount code once the overhaul is finished.
+                </p>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteAccount}
-                  disabled={isLoading || deleteConfirmEmail !== user.email}
-                >
-                  {isLoading && <AnimatedSpinner className="mr-2 h-4 w-4" />}
-                  Delete Account
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </form>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => triggerFeedbackRequest("settings_page")}
+                className="w-full"
+              >
+                Share Detailed Feedback
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={cardVariants}>
+          <div className="flex items-center justify-between">
+            <Button type="submit" disabled={isLoading}>
+              {isLoading && <AnimatedSpinner className="mr-2 h-4 w-4" />}
+              Save Changes
+            </Button>
+
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="destructive">Delete Account</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Account</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete your account? This action cannot be undone.
+                    Please type your email to confirm.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email-confirm">Email</Label>
+                    <Input
+                      id="email-confirm"
+                      placeholder={user.email}
+                      value={deleteConfirmEmail}
+                      onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteAccount}
+                    disabled={isLoading || deleteConfirmEmail !== user.email}
+                  >
+                    {isLoading && <AnimatedSpinner className="mr-2 h-4 w-4" />}
+                    Delete Account
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </motion.div>
+      </motion.form>
     </Form>
   );
 }

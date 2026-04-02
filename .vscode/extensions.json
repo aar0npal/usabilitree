@@ -1,7 +1,6 @@
 {
   "recommendations": [
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode",
+    "oxc.oxc-vscode",
     "alfredbirk.tailwind-documentation",
     "bradlc.vscode-tailwindcss",
     "mhutchie.git-graph"

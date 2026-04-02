@@ -1,5 +1,6 @@
 import { Header } from "./_sections/header";
 import { HeroSection } from "./_sections/hero";
+import { PricingSection } from "./_sections/pricing";
 import { Footer } from "./_sections/footer";
 import FAQ from "./_sections/faq";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -17,6 +18,7 @@ export default async function Home() {
     <main>
       <Header user={user} />
       <HeroSection user={user} />
+      <PricingSection />
       <FAQ />
       <Footer />
     </main>

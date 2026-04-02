@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "nextjs", "import", "jsx-a11y", "unicorn", "oxc"],
+  "settings": {
+    "react": {
+      "version": "18.2.0"
+    }
+  },
+  "ignorePatterns": [
+    ".next/**",
+    "node_modules/**",
+    "dist/**",
+    "out/**",
+    "coverage/**",
+    "public/**",
+    "drizzle/meta/**"
+  ],
+  "rules": {},
+  "overrides": [
+    {
+      "files": ["src/lib/hooks/use-userjot-identify.ts"],
+      "rules": {
+        "unicorn/no-empty-file": "off"
+      }
+    },
+    {
+      "files": ["sentry.client.config.ts"],
+      "rules": {
+        "import/namespace": "off"
+      }
+    },
+    {
+      "files": ["src/app/(main)/_components/userjot-identifier.tsx"],
+      "rules": {
+        "unicorn/no-empty-file": "off"
+      }
+    }
+  ]
+}

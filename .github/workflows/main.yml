@@ -18,7 +18,7 @@ jobs:
         run: npm ci
       - name: Check types
         run: npm run types
-      - name: Run prettier
-        run: npm run prettier
-      - name: Run next lint
+      - name: Check formatting
+        run: npm run format:check
+      - name: Run oxlint
         run: npm run lint

@@ -1,6 +1,7 @@
 import { CodeIcon } from "@radix-ui/react-icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const githubUrl = "https://github.com/ubergonmx";
 
@@ -21,6 +22,17 @@ export const Footer = () => {
         <div className="ml-auto">
           <ThemeToggle />
         </div>
+      </div>
+      <div className="container flex flex-wrap items-center gap-x-4 gap-y-1 p-0 text-xs text-muted-foreground">
+        <Link href="/privacy" className="hover:text-foreground hover:underline">
+          Privacy Policy
+        </Link>
+        <Link href="/terms" className="hover:text-foreground hover:underline">
+          Terms of Service
+        </Link>
+        <a href="mailto:support@usabilitree.com" className="hover:text-foreground hover:underline">
+          support@usabilitree.com
+        </a>
       </div>
     </footer>
   );

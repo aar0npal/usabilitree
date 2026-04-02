@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -338,51 +341,79 @@ const updates: Update[] = [
       "Participant test links now always open in light mode, the rest of the site continues to follow system theme or user preference.",
     ],
   },
+  {
+    id: "27",
+    date: "2026-04-02",
+    title: "Billing & Study Limit Update",
+    description:
+      "Introduced billing and temporarily reverting the free study limit to 3 for new accounts.",
+    type: "message",
+    details: [
+      "Hello! I've added billing to the platform. Thank you so much for your continued support, it truly means a lot. 🙏",
+      "Because many users have reached the 7-study limit, I'm reverting the default free limit back to 3 studies for new accounts going forward.",
+      "Don't worry, if you already have an account your current study limit is retained. Nothing changes for you.",
+      "Any purchased study limits are also retained indefinitely, so there will be no issues when the overhaul launches.",
+      "This pricing is temporary. I'm actively focusing on the overhaul, which will bring a proper pricing structure along with major improvements.",
+      "Thank you for your patience and support. It genuinely keeps this project going! 🚀",
+    ],
+  },
 ];
 
 export function UpdatesList() {
+  const reversed = [...updates].reverse();
   return (
     <div className="space-y-4">
-      {[...updates].reverse().map((update) => (
-        <Card key={update.id}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">{update.title}</CardTitle>
-              <Badge
-                variant={
-                  update.type === "feature"
-                    ? "default"
-                    : update.type === "improvement"
-                      ? "secondary"
-                      : update.type === "message"
-                        ? "green"
-                        : "outline"
-                }
-              >
-                {update.type}
-              </Badge>
-            </div>
-            <time className="text-sm text-muted-foreground">
-              {new Date(update.date).toLocaleDateString(undefined, {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </time>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground">{update.description}</p>
-            {update.details && (
-              <ul className="ml-4 list-disc text-sm text-muted-foreground">
-                {update.details.map((detail, index) => (
-                  <li key={index} className="mt-1">
-                    {detail}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+      {reversed.map((update, i) => (
+        <motion.div
+          key={update.id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: 0.3,
+            ease: [0.16, 1, 0.3, 1],
+            delay: Math.min(i * 0.04, 0.24),
+          }}
+        >
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold">{update.title}</CardTitle>
+                <Badge
+                  variant={
+                    update.type === "feature"
+                      ? "default"
+                      : update.type === "improvement"
+                        ? "secondary"
+                        : update.type === "message"
+                          ? "green"
+                          : "outline"
+                  }
+                >
+                  {update.type}
+                </Badge>
+              </div>
+              <time className="text-sm text-muted-foreground">
+                {new Date(update.date).toLocaleDateString(undefined, {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </time>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm text-muted-foreground">{update.description}</p>
+              {update.details && (
+                <ul className="ml-4 list-disc text-sm text-muted-foreground">
+                  {update.details.map((detail, index) => (
+                    <li key={index} className="mt-1">
+                      {detail}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       ))}
     </div>
   );

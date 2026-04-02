@@ -35,7 +35,12 @@ export default function FAQ() {
       question: "Is this tool free?",
       answer: (
         <span>
-          Yes, everything is free. You can create up to 7 tree tests with unlimited participants.
+          Yes &mdash; you get 3 studies for free with unlimited participants. Need more? You can
+          purchase additional study packs (5 studies for $5, one-time) from your{" "}
+          <Button variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-10">
+            <Link href="/dashboard/billing">Billing</Link>
+          </Button>{" "}
+          page.
         </span>
       ),
     },
@@ -144,7 +149,11 @@ export default function FAQ() {
         </Accordion>
       </div>
       <h4 className="mb-12 text-center text-sm font-medium tracking-tight text-foreground/80">
-        Still have questions? Contact me at{" "}
+        Still have questions? Email us at{" "}
+        <Button variant="linkHover1" className="p-0 after:w-[155px]">
+          <a href="mailto:support@usabilitree.com">support@usabilitree.com</a>
+        </Button>{" "}
+        or DM me on{" "}
         <Button variant="linkHover1" className="p-0 after:w-12">
           <a href="https://discord.com/users/263841596213035009" target="_blank">
             Discord

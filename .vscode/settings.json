@@ -4,15 +4,15 @@
   "editor.formatOnType": false,
   "editor.formatOnSaveMode": "file",
   "files.autoSave": "onFocusChange",
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.defaultFormatter": "oxc.oxc-vscode",
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
-    "source.fixAll.format": "explicit"
+    "source.fixAll.format": "explicit",
+    "source.format.oxc": "explicit"
   },
   "git.enableSmartCommit": false,
   "git.suggestSmartCommit": false,
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "cSpell.words": [
     "aaronpal",

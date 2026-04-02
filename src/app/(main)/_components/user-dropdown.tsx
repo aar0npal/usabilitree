@@ -40,7 +40,8 @@ export const UserDropdown = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className={className}>
-        {/* eslint @next/next/no-img-element:off */}
+        {/* Intentional: dynamic avatar URLs; next/image remotePatterns would be broader than needed. */}
+        {/* oxlint-disable-next-line nextjs/no-img-element */}
         <img
           src={avatar ?? "https://source.boringavatars.com/marble/60/" + email}
           alt="Avatar"
@@ -56,9 +57,9 @@ export const UserDropdown = ({
           <DropdownMenuItem className="cursor-pointer text-muted-foreground" asChild>
             <Link href="/dashboard">Dashboard</Link>
           </DropdownMenuItem>
-          {/* <DropdownMenuItem className="cursor-pointer text-muted-foreground" asChild>
+          <DropdownMenuItem className="cursor-pointer text-muted-foreground" asChild>
             <Link href="/dashboard/billing">Billing</Link>
-          </DropdownMenuItem> */}
+          </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer text-muted-foreground" asChild>
             <Link href="/dashboard/settings">Settings</Link>
           </DropdownMenuItem>

@@ -18,12 +18,11 @@ export function usePostHogIdentify(user: User | null | undefined) {
         has_password: !!user.hashedPassword,
         has_discord: !!user.discordId,
         has_google: !!user.googleId,
-        has_stripe_subscription: !!user.stripeSubscriptionId,
-        stripe_customer_id: user.stripeCustomerId,
+        creem_customer_id: user.creemCustomerId,
+        study_limit: user.studyLimit,
         created_at: user.createdAt,
         avatar: user.avatar,
-        // Add subscription status if you want to track plan types
-        subscription_status: user.stripeSubscriptionId ? "active" : "free",
+        has_purchased: !!user.creemCustomerId,
       });
     } else {
       // Reset identification when user logs out

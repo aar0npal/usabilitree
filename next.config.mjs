@@ -1,8 +1,17 @@
 import { withSentryConfig } from "@sentry/nextjs";
-/** @type {import('next').NextConfig} */
-const nextConfig = {};
+import createMDX from "@next/mdx";
 
-export default withSentryConfig(nextConfig, {
+const withMDX = createMDX({});
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  pageExtensions: ["js", "jsx", "ts", "tsx", "md", "mdx"],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+};
+
+export default withSentryConfig(withMDX(nextConfig), {
   // For all available options, see:
   // https://github.com/getsentry/sentry-webpack-plugin#options
 

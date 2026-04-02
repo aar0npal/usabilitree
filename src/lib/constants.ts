@@ -2,10 +2,17 @@ export const APP_TITLE = "UsabiliTree";
 export const EMAIL_SENDER = '"UsabiliTree" <noreply@usabilitree.com>'; // for nodemailer
 export const CODE_LENGTH = 8;
 
+/** `@creem_io/nextjs` links here; handlers live in `app/api/checkout` and `app/api/portal`. */
+export const CREEM_API = {
+  checkout: "/api/checkout",
+  portal: "/api/portal",
+} as const;
+
 export enum Paths {
   Home = "/",
   Login = "/login",
   Signup = "/signup",
+  Billing = "/dashboard/billing",
   Dashboard = "/dashboard",
   VerifyEmail = "/verify-email",
   ResetPassword = "/reset-password",
