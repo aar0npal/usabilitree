@@ -17,14 +17,23 @@ class ForbiddenError extends Error {
 }
 
 export async function createSampleTreeTestStudy(userIdLocal?: string) {
-  const userId = userIdLocal ?? (await getCurrentUser())?.id;
-  if (!userId) throw new Error("Unauthorized");
+  let userId: string;
+  let studyLimit: number;
 
-  const [userRow] = await db
-    .select({ studyLimit: users.studyLimit })
-    .from(users)
-    .where(eq(users.id, userId));
-  if (!userRow) throw new Error("Unauthorized");
+  if (userIdLocal !== undefined) {
+    userId = userIdLocal;
+    const [userRow] = await db
+      .select({ studyLimit: users.studyLimit })
+      .from(users)
+      .where(eq(users.id, userId));
+    if (!userRow) throw new Error("Unauthorized");
+    studyLimit = userRow.studyLimit;
+  } else {
+    const sessionUser = await getCurrentUser();
+    if (!sessionUser) throw new Error("Unauthorized");
+    userId = sessionUser.id;
+    studyLimit = sessionUser.studyLimit;
+  }
 
   const studyId = nanoid();
 
@@ -299,7 +308,7 @@ Feel free to explore more features or start creating your own study.`;
           .select({ n: count() })
           .from(studies)
           .where(eq(studies.userId, userId));
-        if (!canCreateStudy(countRow.n, userRow.studyLimit)) {
+        if (!canCreateStudy(countRow.n, studyLimit)) {
           throw new ForbiddenError("Study limit reached");
         }
 
@@ -359,7 +368,7 @@ Feel free to explore more features or start creating your own study.`;
           .select({ n: count() })
           .from(studies)
           .where(eq(studies.userId, userId));
-        if (afterRow.n > userRow.studyLimit) {
+        if (afterRow.n > studyLimit) {
           throw new ForbiddenError("Study limit reached");
         }
       },

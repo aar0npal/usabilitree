@@ -13,6 +13,15 @@ type Update = {
   details?: string[];
 };
 
+/** Parse YYYY-MM-DD as a local calendar date (ISO date-only strings parse as UTC and can show the wrong day). */
+function parseCalendarDate(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map((part) => Number.parseInt(part, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    return new Date(NaN);
+  }
+  return new Date(y, m - 1, d);
+}
+
 const updates: Update[] = [
   {
     id: "1",
@@ -393,7 +402,7 @@ export function UpdatesList() {
                 </Badge>
               </div>
               <time className="text-sm text-muted-foreground">
-                {new Date(update.date).toLocaleDateString(undefined, {
+                {parseCalendarDate(update.date).toLocaleDateString(undefined, {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
