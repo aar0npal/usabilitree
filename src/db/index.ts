@@ -6,7 +6,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 
 function isLocalDatabaseUrl(url: string): boolean {
-  return url.startsWith("file:") || url.includes(":memory:");
+  return url.startsWith("file:") || url === ":memory:";
 }
 
 const databaseUrl = env.DATABASE_URL;
@@ -18,10 +18,7 @@ if (!isLocalDatabaseUrl(databaseUrl) && env.DATABASE_AUTH_TOKEN === undefined) {
 const client = createClient({
   url: databaseUrl,
   // Turso / remote libsql requires a token in dev too; file: and :memory: do not.
-  authToken:
-    databaseUrl.startsWith("file:") || databaseUrl === ":memory:"
-      ? undefined
-      : (env.DATABASE_AUTH_TOKEN ?? undefined),
+  authToken: isLocalDatabaseUrl(databaseUrl) ? undefined : (env.DATABASE_AUTH_TOKEN ?? undefined),
 });
 
 export const db = drizzle(client, { schema });

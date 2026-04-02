@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createClient } from "@libsql/client";
+import { createClient, type Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
@@ -15,12 +15,13 @@ const migrationsFolder = path.join(process.cwd(), "drizzle");
 describe("applyCreemCheckoutCredit", () => {
   let memDb: LibSQLDatabase<typeof schema>;
   let tmpDir: string;
+  let sqlClient: Client;
 
   beforeAll(async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "usabilitree-creem-test-"));
     const dbFile = path.join(tmpDir, "test.db");
-    const client = createClient({ url: `file:${dbFile}` });
-    memDb = drizzle(client, { schema });
+    sqlClient = createClient({ url: `file:${dbFile}` });
+    memDb = drizzle(sqlClient, { schema });
     await migrate(memDb, { migrationsFolder });
 
     await memDb.insert(schema.users).values({
@@ -32,6 +33,7 @@ describe("applyCreemCheckoutCredit", () => {
   });
 
   afterAll(() => {
+    sqlClient.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 

@@ -357,14 +357,6 @@ Feel free to explore more features or start creating your own study.`;
 
           await tx.insert(treeTaskResults).values(taskResultsWithIds);
         }
-
-        const [afterRow] = await tx
-          .select({ n: count() })
-          .from(studies)
-          .where(eq(studies.userId, userId));
-        if (afterRow.n > studyLimit) {
-          throw new ForbiddenError("Study limit reached");
-        }
       },
       { behavior: "immediate" }
     );

@@ -72,14 +72,6 @@ export async function createStudy(type: "tree_test" | "card_sort") {
           nextButtonText: defaultCustomText.nextButton,
           confidenceDescriptionText: defaultCustomText.confidenceDescription,
         });
-
-        const [afterRow] = await tx
-          .select({ n: count() })
-          .from(studies)
-          .where(eq(studies.userId, user.id));
-        if (afterRow.n > user.studyLimit) {
-          throw new ForbiddenError("Study limit reached");
-        }
       },
       { behavior: "immediate" }
     );
