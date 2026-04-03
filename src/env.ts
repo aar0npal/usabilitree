@@ -35,11 +35,13 @@ const envInternal = createEnv({
     NEXT_PUBLIC_CREEM_PRODUCT_ID: z.string().trim().min(1).optional(),
     NEXT_PUBLIC_APP_URL: z.string().url(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().trim().min(1),
+    NEXT_PUBLIC_POSTHOG_REVERSE_PROXY: z.string().url(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
   },
   runtimeEnv: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_REVERSE_PROXY: process.env.NEXT_PUBLIC_POSTHOG_REVERSE_PROXY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_CREEM_TEST_MODE: process.env.NEXT_PUBLIC_CREEM_TEST_MODE,
     NEXT_PUBLIC_CREEM_PRODUCT_ID: process.env.NEXT_PUBLIC_CREEM_PRODUCT_ID,

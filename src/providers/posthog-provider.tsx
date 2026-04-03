@@ -5,7 +5,9 @@ import { PostHogProvider } from "posthog-js/react";
 
 if (typeof window !== "undefined") {
   posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host: env.NEXT_PUBLIC_POSTHOG_HOST,
+    api_host: env.NEXT_PUBLIC_POSTHOG_REVERSE_PROXY,
+    ui_host: env.NEXT_PUBLIC_POSTHOG_HOST,
+    defaults: "2026-01-30",
     person_profiles: "identified_only", // or 'always' to create profiles for anonymous users as well
     capture_pageview: false, // Disable automatic pageview capture, as we capture manually
     capture_pageleave: true, // Enable pageleave capture
