@@ -28,9 +28,12 @@ const envInternal = createEnv({
     CREEM_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
   },
   client: {
+    // Default to "false" so an omitted env var never silently puts a live
+    // Creem API key into test mode in production. Set to "true" explicitly
+    // in development / staging via .env.example.
     NEXT_PUBLIC_CREEM_TEST_MODE: z
       .enum(["true", "false"])
-      .default("true")
+      .default("false")
       .transform((v) => v === "true"),
     NEXT_PUBLIC_CREEM_PRODUCT_ID: z.string().trim().min(1).optional(),
     NEXT_PUBLIC_APP_URL: z.string().url(),
