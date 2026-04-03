@@ -33,6 +33,7 @@ interface NewPostProps {
   studyLimit: number;
   studyCount: number;
   creemProductId?: string;
+  paymentsEnabled?: boolean;
   index?: number;
 }
 
@@ -42,6 +43,7 @@ export const NewStudy = ({
   studyLimit,
   studyCount,
   creemProductId,
+  paymentsEnabled = false,
   index = 0,
 }: NewPostProps) => {
   const router = useRouter();
@@ -121,6 +123,7 @@ export const NewStudy = ({
         studyLimit={studyLimit}
         studyCount={studyCount}
         creemProductId={creemProductId}
+        paymentsEnabled={paymentsEnabled}
       />
     </>
   );
@@ -133,6 +136,7 @@ interface UpgradeDialogProps {
   studyLimit: number;
   studyCount: number;
   creemProductId?: string;
+  paymentsEnabled?: boolean;
 }
 
 function UpgradeDialog({
@@ -142,6 +146,7 @@ function UpgradeDialog({
   studyLimit,
   studyCount,
   creemProductId,
+  paymentsEnabled = false,
 }: UpgradeDialogProps) {
   const posthog = usePostHog();
 
@@ -182,7 +187,7 @@ function UpgradeDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          {creemProductId ? (
+          {paymentsEnabled && creemProductId ? (
             <CreemCheckout
               checkoutPath={CREEM_API.checkout}
               productId={creemProductId}
@@ -194,8 +199,8 @@ function UpgradeDialog({
               </Button>
             </CreemCheckout>
           ) : (
-            <Button disabled title="Set NEXT_PUBLIC_CREEM_PRODUCT_ID">
-              Checkout unavailable
+            <Button disabled>
+              {paymentsEnabled ? "Checkout unavailable" : "Payments temporarily unavailable"}
             </Button>
           )}
         </DialogFooter>

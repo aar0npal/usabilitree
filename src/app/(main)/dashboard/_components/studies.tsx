@@ -38,6 +38,7 @@ export async function Studies() {
           studyLimit={studyLimit}
           studyCount={studyCount}
           creemProductId={env.NEXT_PUBLIC_CREEM_PRODUCT_ID}
+          paymentsEnabled={env.NEXT_PUBLIC_CREEM_PAYMENTS_ENABLED}
           index={0}
         />
         {ownedStudies.map((study, i) => (

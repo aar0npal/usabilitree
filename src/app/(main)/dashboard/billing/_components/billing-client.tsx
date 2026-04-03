@@ -27,6 +27,7 @@ interface BillingClientProps {
   userId: string;
   creemCustomerId: string | null;
   productId?: string;
+  paymentsEnabled?: boolean;
 }
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
@@ -107,6 +108,7 @@ export function BillingClient({
   userId,
   creemCustomerId,
   productId,
+  paymentsEnabled = false,
 }: BillingClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -319,7 +321,7 @@ export function BillingClient({
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {productId ? (
+            {paymentsEnabled && productId ? (
               <CreemCheckout
                 checkoutPath={CREEM_API.checkout}
                 productId={productId}
@@ -334,8 +336,8 @@ export function BillingClient({
                 </Button>
               </CreemCheckout>
             ) : (
-              <Button className="h-11 w-full" disabled title="Set NEXT_PUBLIC_CREEM_PRODUCT_ID">
-                Checkout unavailable
+              <Button className="h-11 w-full" disabled>
+                {paymentsEnabled ? "Checkout unavailable" : "Payments temporarily unavailable"}
               </Button>
             )}
           </CardContent>

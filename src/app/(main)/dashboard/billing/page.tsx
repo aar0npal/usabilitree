@@ -41,6 +41,7 @@ export default async function BillingPage() {
           userId={user.id}
           creemCustomerId={user.creemCustomerId ?? null}
           productId={env.NEXT_PUBLIC_CREEM_PRODUCT_ID}
+          paymentsEnabled={env.NEXT_PUBLIC_CREEM_PAYMENTS_ENABLED}
         />
       </Suspense>
     </div>

@@ -36,6 +36,12 @@ const envInternal = createEnv({
       .default("false")
       .transform((v) => v === "true"),
     NEXT_PUBLIC_CREEM_PRODUCT_ID: z.string().trim().min(1).optional(),
+    // Gate all purchase UI. Set to "true" in Vercel once the Creem store is
+    // approved for live payments — no code deploy required.
+    NEXT_PUBLIC_CREEM_PAYMENTS_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
     NEXT_PUBLIC_APP_URL: z.string().url(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().trim().min(1),
     NEXT_PUBLIC_POSTHOG_REVERSE_PROXY: z.string().url().optional(),
@@ -48,6 +54,7 @@ const envInternal = createEnv({
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_CREEM_TEST_MODE: process.env.NEXT_PUBLIC_CREEM_TEST_MODE,
     NEXT_PUBLIC_CREEM_PRODUCT_ID: process.env.NEXT_PUBLIC_CREEM_PRODUCT_ID,
+    NEXT_PUBLIC_CREEM_PAYMENTS_ENABLED: process.env.NEXT_PUBLIC_CREEM_PAYMENTS_ENABLED,
     NODE_ENV: process.env.NODE_ENV,
     DATABASE_URL: process.env.DATABASE_URL,
     DATABASE_AUTH_TOKEN: process.env.DATABASE_AUTH_TOKEN,
