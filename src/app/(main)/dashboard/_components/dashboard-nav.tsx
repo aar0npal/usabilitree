@@ -63,8 +63,7 @@ function NavLabel({ children }: { children: string }) {
           ? {
               WebkitMaskImage:
                 "linear-gradient(to right, black calc(100% - 12px), transparent 100%)",
-              maskImage:
-                "linear-gradient(to right, black calc(100% - 12px), transparent 100%)",
+              maskImage: "linear-gradient(to right, black calc(100% - 12px), transparent 100%)",
             }
           : undefined
       }
@@ -123,9 +122,7 @@ export function DashboardNav({ className }: Props) {
                 isActive ? "bg-accent" : "text-muted-foreground md:text-foreground"
               )}
             >
-              <item.icon
-                className={cn("h-4 w-4 shrink-0", isActive ? "mr-2" : "mr-1 md:mr-2")}
-              />
+              <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "mr-2" : "mr-1 md:mr-2")} />
               {isActive ? (
                 <span className="whitespace-nowrap">{item.title}</span>
               ) : (
