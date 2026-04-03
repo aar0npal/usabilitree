@@ -22,6 +22,13 @@ function parseCalendarDate(ymd: string): Date {
   return new Date(y, m - 1, d);
 }
 
+/** Format a YYYY-MM-DD string for display, falling back to "Unknown date" if the input is malformed. */
+function formatCalendarDate(ymd: string): string {
+  const date = parseCalendarDate(ymd);
+  if (Number.isNaN(date.getTime())) return "Unknown date";
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+}
+
 const updates: Update[] = [
   {
     id: "1",
@@ -402,11 +409,7 @@ export function UpdatesList() {
                 </Badge>
               </div>
               <time className="text-sm text-muted-foreground">
-                {parseCalendarDate(update.date).toLocaleDateString(undefined, {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
+                {formatCalendarDate(update.date)}
               </time>
             </CardHeader>
             <CardContent className="space-y-2">

@@ -183,7 +183,12 @@ export async function verifyEmail(
 
   await invalidateUserSessions(user.id);
   await setSession(user.id);
-  await createSampleTreeTestStudy();
+  try {
+    await createSampleTreeTestStudy();
+  } catch (error) {
+    // Sample study creation is best-effort — do not block email verification
+    console.error("Failed to create sample study during onboarding:", error);
+  }
   redirect(Paths.Dashboard + "?onboarding=1");
 }
 

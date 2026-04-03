@@ -4,6 +4,7 @@ import { participants, studies, treeTaskResults, treeTasks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { getCurrentUser } from "@/lib/auth/session";
+import { createRouteLogger } from "@/lib/posthog/server-logs";
 
 const confidenceLevels = [
   { value: 1, label: "Strongly Disagree" },
@@ -79,10 +80,20 @@ function getCurrentDate(): string {
 }
 
 export async function GET(request: NextRequest, { params }: { params: { studyId: string } }) {
+  const routeLogger = createRouteLogger("/api/export/[studyId]", "GET");
+  routeLogger.flush();
+
   try {
+    routeLogger.info("Study export requested", {
+      study_id: params.studyId,
+    });
+
     // Check authentication
     const user = await getCurrentUser();
     if (!user) {
+      routeLogger.warn("Unauthorized study export request", {
+        study_id: params.studyId,
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -97,6 +108,9 @@ export async function GET(request: NextRequest, { params }: { params: { studyId:
       .where(eq(studies.id, studyId));
 
     if (!study) {
+      routeLogger.warn("Study export requested for missing study", {
+        study_id: studyId,
+      });
       return NextResponse.json({ error: "Study not found" }, { status: 404 });
     }
 
@@ -249,6 +263,13 @@ export async function GET(request: NextRequest, { params }: { params: { studyId:
     const currentDate = getCurrentDate();
     const filename = `${sanitizedTitle}_results_${currentDate}.xlsx`;
 
+    routeLogger.info("Study export generated", {
+      study_id: studyId,
+      participant_count: studyParticipants.length,
+      task_count: tasks.length,
+      filename,
+    });
+
     // Return the file with proper headers
     return new NextResponse(excelBuffer, {
       status: 200,
@@ -258,7 +279,9 @@ export async function GET(request: NextRequest, { params }: { params: { studyId:
       },
     });
   } catch (error) {
-    console.error("Failed to export study data:", error);
+    routeLogger.error("Study export failed", error, {
+      study_id: params.studyId,
+    });
     return NextResponse.json({ error: "Failed to export study data" }, { status: 500 });
   }
 }

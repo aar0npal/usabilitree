@@ -1,16 +1,27 @@
 import { NextResponse } from "next/server";
+import { createRouteLogger } from "@/lib/posthog/server-logs";
 
 export async function GET() {
+  const routeLogger = createRouteLogger("/api/widget", "GET");
+  routeLogger.flush();
+
   try {
     const response = await fetch("https://cdn.userjot.com/sdk/v2/uj.js", {
       next: { revalidate: 3600 }, // Cache for 1 hour
     });
 
     if (!response.ok) {
+      routeLogger.warn("Widget proxy upstream failed", {
+        status_code: response.status,
+      });
       return NextResponse.json({ error: "Failed to fetch widget" }, { status: 500 });
     }
 
     const script = await response.text();
+
+    routeLogger.info("Widget proxy succeeded", {
+      payload_bytes: script.length,
+    });
 
     return new Response(script, {
       headers: {
@@ -20,7 +31,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Widget proxy error:", error);
+    routeLogger.error("Widget proxy exception", error);
     return NextResponse.json({ error: "Failed to fetch widget" }, { status: 500 });
   }
 }

@@ -2,8 +2,12 @@ import { cookies } from "next/headers";
 import { generateState } from "arctic";
 import { discord } from "@/lib/auth";
 import { env } from "@/env";
+import { createRouteLogger } from "@/lib/posthog/server-logs";
 
 export async function GET(): Promise<Response> {
+  const routeLogger = createRouteLogger("/api/login/discord", "GET");
+  routeLogger.flush();
+
   const state = generateState();
   const url = discord.createAuthorizationURL(state, ["identify", "email"]);
 
@@ -14,6 +18,8 @@ export async function GET(): Promise<Response> {
     maxAge: 60 * 10,
     sameSite: "lax",
   });
+
+  routeLogger.info("Discord OAuth redirect initialized");
 
   return Response.redirect(url);
 }

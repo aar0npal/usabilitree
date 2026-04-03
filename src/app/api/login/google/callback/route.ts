@@ -9,8 +9,12 @@ import { users } from "@/db/schema";
 import { notifyNewUser } from "@/lib/discord";
 import * as Sentry from "@sentry/react";
 import { createSampleTreeTestStudy } from "@/lib/treetest/sample-actions";
+import { createRouteLogger } from "@/lib/posthog/server-logs";
 
 export async function GET(request: Request): Promise<Response> {
+  const routeLogger = createRouteLogger("/api/login/google/callback", "GET");
+  routeLogger.flush();
+
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -18,6 +22,7 @@ export async function GET(request: Request): Promise<Response> {
   const codeVerifier = cookies().get("google_code_verifier")?.value ?? null;
 
   if (!code || !state || !storedState || state !== storedState || !codeVerifier) {
+    routeLogger.warn("Google OAuth callback rejected due to invalid state");
     return new Response(null, {
       status: 400,
     });
@@ -56,7 +61,18 @@ export async function GET(request: Request): Promise<Response> {
         avatar
       );
       await setSession(userId);
-      await createSampleTreeTestStudy();
+      routeLogger.info("Google OAuth user created", {
+        user_id: userId,
+      });
+
+      try {
+        await createSampleTreeTestStudy();
+      } catch (error) {
+        // Sample study creation is best-effort — do not block OAuth onboarding
+        routeLogger.error("Google onboarding sample study creation failed", error, {
+          user_id: userId,
+        });
+      }
       return new Response(null, {
         status: 302,
         headers: {
@@ -75,6 +91,11 @@ export async function GET(request: Request): Promise<Response> {
         })
         .where(eq(users.id, existingUser.id));
     }
+
+    routeLogger.info("Google OAuth user signed in", {
+      user_id: existingUser.id,
+    });
+
     await setSession(existingUser.id);
     return new Response(null, {
       status: 302,
@@ -86,10 +107,13 @@ export async function GET(request: Request): Promise<Response> {
     // the specific error message depends on the provider
     if (error instanceof OAuth2RequestError) {
       // invalid code
+      routeLogger.warn("Google OAuth invalid authorization code");
       return new Response(null, {
         status: 400,
       });
     }
+
+    routeLogger.error("Google OAuth callback failed", error);
     Sentry.captureException(error);
     return new Response(null, {
       status: 500,

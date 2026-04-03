@@ -4,6 +4,7 @@ import { Paths } from "@/lib/constants";
 import { STUDIES_PER_PURCHASE, DEFAULT_STUDY_LIMIT } from "@/lib/billing/study-limit";
 import { getCurrentUser } from "@/lib/auth/session";
 import Section from "../_components/section";
+import { StarterPackCtaLink } from "../_components/starter-pack-cta-link";
 
 const FREE_LIMIT = DEFAULT_STUDY_LIMIT;
 
@@ -16,6 +17,8 @@ const features = [
 
 export async function PricingSection() {
   const user = await getCurrentUser();
+  const starterPackHref = user ? Paths.Billing : Paths.Login;
+
   return (
     <Section id="pricing">
       <div className="mx-auto max-w-3xl">
@@ -90,11 +93,7 @@ export async function PricingSection() {
               </li>
             </ul>
 
-            <Button asChild className="w-full">
-              <Link href={user ? Paths.Billing : Paths.Login}>
-                Get Starter Study Pack &mdash; $5
-              </Link>
-            </Button>
+            <StarterPackCtaLink href={starterPackHref} isAuthenticated={Boolean(user)} />
           </div>
         </div>
 

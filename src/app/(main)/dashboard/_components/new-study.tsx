@@ -23,6 +23,7 @@ import { createSampleTreeTestStudy } from "@/lib/treetest/sample-actions";
 import * as Sentry from "@sentry/react";
 import { CREEM_API } from "@/lib/constants";
 import { STUDIES_PER_PURCHASE } from "@/lib/billing/study-limit";
+import { usePostHog } from "posthog-js/react";
 
 const MotionButton = motion.create(Button);
 
@@ -142,6 +143,20 @@ function UpgradeDialog({
   studyCount,
   creemProductId,
 }: UpgradeDialogProps) {
+  const posthog = usePostHog();
+
+  const handleCheckoutInitiated = () => {
+    sessionStorage.setItem("pre_checkout_study_limit", String(studyLimit));
+
+    posthog?.capture("starter_pack_checkout_clicked", {
+      entry_point: "new_study_upgrade_dialog",
+      studies_per_pack: STUDIES_PER_PURCHASE,
+      price_usd: 5,
+      study_limit_before: studyLimit,
+      study_count_before: studyCount,
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[420px]">
@@ -174,11 +189,7 @@ function UpgradeDialog({
               referenceId={userId}
               successUrl="/dashboard/billing"
             >
-              <Button
-                onClick={() =>
-                  sessionStorage.setItem("pre_checkout_study_limit", String(studyLimit))
-                }
-              >
+              <Button onClick={handleCheckoutInitiated}>
                 Get {STUDIES_PER_PURCHASE} More Studies &mdash; $5
               </Button>
             </CreemCheckout>

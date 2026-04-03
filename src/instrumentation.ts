@@ -1,8 +1,124 @@
 import * as Sentry from "@sentry/nextjs";
+import { logs, SeverityNumber } from "@opentelemetry/api-logs";
+import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
+import { resourceFromAttributes } from "@opentelemetry/resources";
+import { LoggerProvider, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs";
+
+const serviceName = process.env.POSTHOG_SERVICE_NAME?.trim() || "usabilitree";
+const nodeEnv = process.env.NODE_ENV ?? "development";
+const posthogProjectToken = process.env.POSTHOG_PROJECT_KEY ?? process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const posthogLogsHost = (
+  process.env.POSTHOG_LOGS_HOST ??
+  process.env.NEXT_PUBLIC_POSTHOG_HOST ??
+  "https://us.i.posthog.com"
+).replace(/\/$/, "");
+const posthogLogsUrl = process.env.POSTHOG_LOGS_URL ?? `${posthogLogsHost}/i/v1/logs`;
+
+const logProcessors = posthogProjectToken
+  ? [
+      new SimpleLogRecordProcessor(
+        new OTLPLogExporter({
+          url: posthogLogsUrl,
+          headers: {
+            Authorization: `Bearer ${posthogProjectToken}`,
+            "Content-Type": "application/json",
+          },
+        })
+      ),
+    ]
+  : [];
+
+export const loggerProvider = new LoggerProvider({
+  resource: resourceFromAttributes({
+    "service.name": serviceName,
+    "deployment.environment": nodeEnv,
+  }),
+  processors: logProcessors,
+});
+
+const instrumentationLogger = loggerProvider.getLogger("nextjs.instrumentation");
+
+function toLogBody(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value instanceof Error) return `${value.name}: ${value.message}`;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function patchNodeConsoleLogs() {
+  if (!posthogProjectToken) return;
+
+  const globalState = globalThis as typeof globalThis & {
+    __usabilitreePosthogConsolePatched?: boolean;
+  };
+
+  if (globalState.__usabilitreePosthogConsolePatched) return;
+
+  globalState.__usabilitreePosthogConsolePatched = true;
+
+  const consoleLogger = loggerProvider.getLogger("node.console");
+
+  const patchMethod = (method: "log" | "warn" | "error", severityNumber: SeverityNumber) => {
+    const original = console[method].bind(console);
+
+    console[method] = (...args: unknown[]) => {
+      try {
+        consoleLogger.emit({
+          body: args.map(toLogBody).join(" "),
+          severityNumber,
+          attributes: {
+            source: "console",
+            console_method: method,
+          },
+        });
+      } catch {
+        // Never block original console behavior.
+      }
+
+      original(...args);
+    };
+  };
+
+  patchMethod("log", SeverityNumber.INFO);
+  patchMethod("warn", SeverityNumber.WARN);
+  patchMethod("error", SeverityNumber.ERROR);
+}
+
+function toErrorAttributes(error: unknown): Record<string, string> {
+  if (error instanceof Error) {
+    return {
+      error_name: error.name,
+      error_message: error.message,
+      error_stack: error.stack?.slice(0, 4000) ?? "",
+    };
+  }
+
+  return {
+    error_name: typeof error,
+    error_message: toLogBody(error),
+  };
+}
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("../sentry.server.config");
+
+    logs.setGlobalLoggerProvider(loggerProvider);
+    patchNodeConsoleLogs();
+
+    instrumentationLogger.emit({
+      body: posthogProjectToken
+        ? "PostHog Logs initialized"
+        : "PostHog Logs disabled (missing token)",
+      severityNumber: posthogProjectToken ? SeverityNumber.INFO : SeverityNumber.WARN,
+      attributes: {
+        source: "nextjs.instrumentation",
+        logs_url: posthogLogsUrl,
+      },
+    });
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {
@@ -10,4 +126,43 @@ export async function register() {
   }
 }
 
-export const onRequestError = Sentry.captureRequestError;
+export const onRequestError: typeof Sentry.captureRequestError = (...args) => {
+  const [error, request] = args;
+
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    let pathname = "unknown";
+    let method = "unknown";
+
+    const requestWithPath = request as { path?: unknown; method?: unknown };
+    const requestWithUrl = request as { url?: unknown; method?: unknown };
+
+    if (typeof requestWithPath.method === "string") {
+      method = requestWithPath.method;
+    } else if (typeof requestWithUrl.method === "string") {
+      method = requestWithUrl.method;
+    }
+
+    if (typeof requestWithPath.path === "string") {
+      pathname = requestWithPath.path;
+    } else if (typeof requestWithUrl.url === "string") {
+      try {
+        pathname = new URL(requestWithUrl.url).pathname;
+      } catch {
+        pathname = requestWithUrl.url;
+      }
+    }
+
+    instrumentationLogger.emit({
+      body: "Unhandled Next.js request error",
+      severityNumber: SeverityNumber.ERROR,
+      attributes: {
+        source: "nextjs.onRequestError",
+        route: pathname,
+        method,
+        ...toErrorAttributes(error),
+      },
+    });
+  }
+
+  return Sentry.captureRequestError(...args);
+};

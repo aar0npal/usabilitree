@@ -14,6 +14,7 @@ import { containerVariants, cardVariants } from "@/lib/animations";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
 import { firePurchaseConfetti } from "../_lib/purchase-confetti";
+import { usePostHog } from "posthog-js/react";
 
 const BillingConfettiDev =
   process.env.NODE_ENV === "development"
@@ -109,12 +110,21 @@ export function BillingClient({
 }: BillingClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const posthog = usePostHog();
   const returnedFromCheckout = Boolean(searchParams.get("checkout_id"));
   const [justPurchased, setJustPurchased] = React.useState(false);
 
   // Snapshot limit before Creem opens — survives the cross-origin redirect back.
   const handleCheckoutInitiated = () => {
     sessionStorage.setItem("pre_checkout_study_limit", String(studyLimit));
+
+    posthog?.capture("starter_pack_checkout_clicked", {
+      entry_point: "dashboard_billing",
+      studies_per_pack: STUDIES_PER_PURCHASE,
+      price_usd: 5,
+      study_limit_before: studyLimit,
+      study_count_before: studyCount,
+    });
   };
 
   React.useEffect(() => {
