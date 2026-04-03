@@ -100,16 +100,18 @@ export function createRouteLogger(route: string, method: string, requestContext?
       });
     },
     /**
-     * Best-effort, non-blocking flush. Triggers an export of any queued log
-     * records without blocking the response — callers should NOT await this.
-     * Awaiting forceFlush() on every request defeats BatchLogRecordProcessor
-     * batching and adds measurable latency; the processor will drain on its
-     * own schedule between requests.
+     * Awaitable flush — must be awaited in every route handler's finally block.
+     * On Vercel + Next.js 14, serverless function execution is frozen the moment
+     * the response is sent, so a fire-and-forget flush would be cut off and logs
+     * silently dropped. next/after (Next.js 15+) would allow deferring this;
+     * until then, awaiting here is the only reliable way to drain queued records.
      */
-    flush: () => {
-      loggerProvider.forceFlush().catch(() => {
+    flush: async () => {
+      try {
+        await loggerProvider.forceFlush();
+      } catch {
         // Never fail request flow because of telemetry issues.
-      });
+      }
     },
   };
 }

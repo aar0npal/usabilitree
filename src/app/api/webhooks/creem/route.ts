@@ -132,6 +132,6 @@ export const POST = async (request: NextRequest) => {
     routeLogger.error("Creem webhook processing failed", error);
     throw error;
   } finally {
-    routeLogger.flush();
+    await routeLogger.flush();
   }
 };

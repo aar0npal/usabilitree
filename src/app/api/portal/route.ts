@@ -47,12 +47,12 @@ export const GET = portalHandler
         routeLogger.error("Billing portal request failed", error);
         return NextResponse.json({ error: "Billing portal request failed" }, { status: 500 });
       } finally {
-        routeLogger.flush();
+        await routeLogger.flush();
       }
     }
   : async () => {
       const routeLogger = createRouteLogger("/api/portal", "GET");
       routeLogger.warn("Billing portal called without configuration");
-      routeLogger.flush();
+      await routeLogger.flush();
       return NextResponse.json({ error: "Billing portal is not configured" }, { status: 503 });
     };
