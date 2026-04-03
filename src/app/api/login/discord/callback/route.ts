@@ -124,7 +124,7 @@ export async function GET(request: Request): Promise<Response> {
       status: 500,
     });
   } finally {
-    await routeLogger.flush();
+    routeLogger.flush();
   }
 }
 

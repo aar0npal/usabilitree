@@ -285,6 +285,6 @@ export async function GET(request: NextRequest, { params }: { params: { studyId:
     });
     return NextResponse.json({ error: "Failed to export study data" }, { status: 500 });
   } finally {
-    await routeLogger.flush();
+    routeLogger.flush();
   }
 }

@@ -99,12 +99,17 @@ export function createRouteLogger(route: string, method: string, requestContext?
         ...errorAttributes(error),
       });
     },
-    flush: async () => {
-      try {
-        await loggerProvider.forceFlush();
-      } catch {
-        // Never fail request flow because of telemetry flush issues.
-      }
+    /**
+     * Best-effort, non-blocking flush. Triggers an export of any queued log
+     * records without blocking the response — callers should NOT await this.
+     * Awaiting forceFlush() on every request defeats BatchLogRecordProcessor
+     * batching and adds measurable latency; the processor will drain on its
+     * own schedule between requests.
+     */
+    flush: () => {
+      loggerProvider.forceFlush().catch(() => {
+        // Never fail request flow because of telemetry issues.
+      });
     },
   };
 }

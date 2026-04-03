@@ -56,12 +56,12 @@ export const GET = checkoutHandler
         routeLogger.error("Checkout request failed", error);
         return NextResponse.json({ error: "Checkout failed" }, { status: 500 });
       } finally {
-        await routeLogger.flush();
+        routeLogger.flush();
       }
     }
   : async () => {
       const routeLogger = createRouteLogger("/api/checkout", "GET");
       routeLogger.warn("Checkout called without configuration");
-      await routeLogger.flush();
+      routeLogger.flush();
       return NextResponse.json({ error: "Checkout is not configured" }, { status: 503 });
     };

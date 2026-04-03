@@ -29,6 +29,6 @@ export async function GET(request: Request) {
     routeLogger.error("Widget proxy exception", error);
     return NextResponse.json({ error: "Failed to fetch widget" }, { status: 500 });
   } finally {
-    await routeLogger.flush();
+    routeLogger.flush();
   }
 }
