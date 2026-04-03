@@ -7,6 +7,7 @@ import { LoggerProvider, SimpleLogRecordProcessor } from "@opentelemetry/sdk-log
 const serviceName = process.env.POSTHOG_SERVICE_NAME?.trim() || "usabilitree";
 const nodeEnv = process.env.NODE_ENV ?? "development";
 const posthogProjectToken = process.env.POSTHOG_PROJECT_KEY ?? process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const enableConsolePatch = process.env.POSTHOG_CAPTURE_CONSOLE_LOGS === "true";
 const posthogLogsHost = (
   process.env.POSTHOG_LOGS_HOST ??
   process.env.NEXT_PUBLIC_POSTHOG_HOST ??
@@ -48,8 +49,31 @@ function toLogBody(value: unknown): string {
   }
 }
 
+function sanitizeLogBody(body: string): string {
+  const sensitivePatterns = [
+    /Bearer\s+[A-Za-z0-9._-]+/gi,
+    /sntrys_[A-Za-z0-9._=-]+/g,
+    /SG\.[A-Za-z0-9._-]+/g,
+    /whsec_[A-Za-z0-9._-]+/g,
+    /creem_(?:test|live)_[A-Za-z0-9._-]+/g,
+    /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+  ];
+
+  let sanitized = body;
+  for (const pattern of sensitivePatterns) {
+    sanitized = sanitized.replace(pattern, "[REDACTED]");
+  }
+
+  const maxBodyLength = 4000;
+  if (sanitized.length > maxBodyLength) {
+    return `${sanitized.slice(0, maxBodyLength)}...[truncated]`;
+  }
+
+  return sanitized;
+}
+
 function patchNodeConsoleLogs() {
-  if (!posthogProjectToken) return;
+  if (!posthogProjectToken || !enableConsolePatch) return;
 
   const globalState = globalThis as typeof globalThis & {
     __usabilitreePosthogConsolePatched?: boolean;
@@ -67,7 +91,7 @@ function patchNodeConsoleLogs() {
     console[method] = (...args: unknown[]) => {
       try {
         consoleLogger.emit({
-          body: args.map(toLogBody).join(" "),
+          body: sanitizeLogBody(args.map(toLogBody).join(" ")),
           severityNumber,
           attributes: {
             source: "console",
@@ -117,6 +141,7 @@ export async function register() {
       attributes: {
         source: "nextjs.instrumentation",
         logs_url: posthogLogsUrl,
+        console_patch_enabled: enableConsolePatch,
       },
     });
   }

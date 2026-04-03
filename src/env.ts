@@ -35,7 +35,7 @@ const envInternal = createEnv({
     NEXT_PUBLIC_CREEM_PRODUCT_ID: z.string().trim().min(1).optional(),
     NEXT_PUBLIC_APP_URL: z.string().url(),
     NEXT_PUBLIC_POSTHOG_KEY: z.string().trim().min(1),
-    NEXT_PUBLIC_POSTHOG_REVERSE_PROXY: z.string().url(),
+    NEXT_PUBLIC_POSTHOG_REVERSE_PROXY: z.string().url().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
   },
   runtimeEnv: {
