@@ -19,7 +19,12 @@ function parseCalendarDate(ymd: string): Date {
   if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
     return new Date(NaN);
   }
-  return new Date(y, m - 1, d);
+  const date = new Date(y, m - 1, d);
+  // Round-trip check: out-of-range month/day silently rolls over in Date constructor.
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) {
+    return new Date(NaN);
+  }
+  return date;
 }
 
 /** Format a YYYY-MM-DD string for display, falling back to "Unknown date" if the input is malformed. */
