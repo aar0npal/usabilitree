@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileTextIcon, GearIcon, BellIcon, CreditCard } from "@/components/icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { FeedbackButton } from "@/components/feedback-button";
 import { SponsorButton } from "@/components/sponsor-button";
@@ -39,6 +39,40 @@ const items = [
     icon: GearIcon,
   },
 ];
+
+function NavLabel({ children }: { children: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      setOverflowing(el.scrollWidth > el.clientWidth);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <span
+      ref={ref}
+      className="overflow-hidden whitespace-nowrap"
+      style={
+        overflowing
+          ? {
+              WebkitMaskImage:
+                "linear-gradient(to right, black calc(100% - 12px), transparent 100%)",
+              maskImage:
+                "linear-gradient(to right, black calc(100% - 12px), transparent 100%)",
+            }
+          : undefined
+      }
+    >
+      {children}
+    </span>
+  );
+}
 
 interface Props {
   className?: string;
@@ -92,21 +126,11 @@ export function DashboardNav({ className }: Props) {
               <item.icon
                 className={cn("h-4 w-4 shrink-0", isActive ? "mr-2" : "mr-1 md:mr-2")}
               />
-              <span
-                className="overflow-hidden whitespace-nowrap"
-                style={
-                  !isActive
-                    ? {
-                        WebkitMaskImage:
-                          "linear-gradient(to right, black calc(100% - 12px), transparent 100%)",
-                        maskImage:
-                          "linear-gradient(to right, black calc(100% - 12px), transparent 100%)",
-                      }
-                    : undefined
-                }
-              >
-                {item.title}
-              </span>
+              {isActive ? (
+                <span className="whitespace-nowrap">{item.title}</span>
+              ) : (
+                <NavLabel>{item.title}</NavLabel>
+              )}
               {item.hasNewContent && hasUnreadUpdates && (
                 <span className="relative ml-2 flex h-2 w-2 shrink-0">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-theme opacity-75"></span>

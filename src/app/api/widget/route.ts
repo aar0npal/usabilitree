@@ -3,7 +3,6 @@ import { createRouteLogger } from "@/lib/posthog/server-logs";
 
 export async function GET(request: Request) {
   const routeLogger = createRouteLogger("/api/widget", "GET", request);
-  routeLogger.flush();
 
   try {
     const response = await fetch("https://cdn.userjot.com/sdk/v2/uj.js", {
@@ -19,10 +18,6 @@ export async function GET(request: Request) {
 
     const script = await response.text();
 
-    routeLogger.info("Widget proxy succeeded", {
-      payload_bytes: script.length,
-    });
-
     return new Response(script, {
       headers: {
         "Content-Type": "application/javascript",
@@ -33,5 +28,7 @@ export async function GET(request: Request) {
   } catch (error) {
     routeLogger.error("Widget proxy exception", error);
     return NextResponse.json({ error: "Failed to fetch widget" }, { status: 500 });
+  } finally {
+    await routeLogger.flush();
   }
 }

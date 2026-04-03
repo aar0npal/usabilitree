@@ -359,7 +359,7 @@ const updates: Update[] = [
   },
   {
     id: "27",
-    date: "2026-04-02",
+    date: "2026-04-04",
     title: "Billing & Study Limit Update",
     description: "Introduced billing and reverting the free study limit to 3 for new accounts.",
     type: "message",

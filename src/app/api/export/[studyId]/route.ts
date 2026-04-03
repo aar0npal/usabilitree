@@ -81,7 +81,6 @@ function getCurrentDate(): string {
 
 export async function GET(request: NextRequest, { params }: { params: { studyId: string } }) {
   const routeLogger = createRouteLogger("/api/export/[studyId]", "GET", request);
-  routeLogger.flush();
 
   try {
     routeLogger.info("Study export requested", {
@@ -96,6 +95,8 @@ export async function GET(request: NextRequest, { params }: { params: { studyId:
       });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    routeLogger.setUser({ id: user.id, email: user.email });
 
     const studyId = params.studyId;
 
@@ -283,5 +284,7 @@ export async function GET(request: NextRequest, { params }: { params: { studyId:
       study_id: params.studyId,
     });
     return NextResponse.json({ error: "Failed to export study data" }, { status: 500 });
+  } finally {
+    await routeLogger.flush();
   }
 }

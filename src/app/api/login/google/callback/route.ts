@@ -13,7 +13,6 @@ import { createRouteLogger } from "@/lib/posthog/server-logs";
 
 export async function GET(request: Request): Promise<Response> {
   const routeLogger = createRouteLogger("/api/login/google/callback", "GET", request);
-  routeLogger.flush();
 
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -37,6 +36,7 @@ export async function GET(request: Request): Promise<Response> {
       },
     });
     const googleUser: GoogleUser = await response.json();
+    routeLogger.setUser({ email: googleUser.email });
 
     const [existingUser] = await db
       .select()
@@ -47,6 +47,7 @@ export async function GET(request: Request): Promise<Response> {
 
     if (!existingUser) {
       const userId = generateId(21);
+      routeLogger.setUser({ id: userId });
       await db.insert(users).values({
         id: userId,
         email: googleUser.email,
@@ -80,6 +81,8 @@ export async function GET(request: Request): Promise<Response> {
         },
       });
     }
+
+    routeLogger.setUser({ id: existingUser.id, email: existingUser.email });
 
     if (existingUser.googleId !== googleUser.sub || existingUser.avatar !== avatar) {
       await db
@@ -118,6 +121,8 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(null, {
       status: 500,
     });
+  } finally {
+    await routeLogger.flush();
   }
 }
 

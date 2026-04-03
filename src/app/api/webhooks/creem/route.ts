@@ -2,8 +2,10 @@ import { Webhook } from "@creem_io/nextjs";
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
 import { env } from "@/env";
 import { db } from "@/db";
+import { users } from "@/db/schema";
 import { applyCreemCheckoutCredit } from "@/lib/billing/creem-checkout-credit";
 import { createRouteLogger } from "@/lib/posthog/server-logs";
 
@@ -28,9 +30,13 @@ function createConfiguredWebhookHandler(
 
       const configuredProductId = env.NEXT_PUBLIC_CREEM_PRODUCT_ID;
       if (!configuredProductId) {
-        routeLogger.error("[creem/webhook] checkout.completed missing configured product ID", undefined, {
-          webhook_id: webhookId,
-        });
+        routeLogger.error(
+          "[creem/webhook] checkout.completed missing configured product ID",
+          undefined,
+          {
+            webhook_id: webhookId,
+          }
+        );
         throw new Error("missing configured product ID");
       }
 
@@ -64,6 +70,24 @@ function createConfiguredWebhookHandler(
         throw new Error("invalid referenceId format");
       }
 
+      routeLogger.setUser({ id: userId });
+
+      const [purchaser] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!purchaser) {
+        routeLogger.error("[creem/webhook] checkout.completed purchaser not found", undefined, {
+          webhook_id: webhookId,
+          user_id: userId,
+        });
+        throw new Error("purchaser not found");
+      }
+
+      routeLogger.setUser({ email: purchaser.email });
+
       await applyCreemCheckoutCredit(
         {
           webhookId,
@@ -76,6 +100,14 @@ function createConfiguredWebhookHandler(
       routeLogger.info("[creem/webhook] checkout.completed processed", {
         webhook_id: webhookId,
         user_id: userId,
+        user_email: purchaser.email,
+        product_id: configuredProductId,
+      });
+
+      routeLogger.info("starter_pack_purchase_completed", {
+        webhook_id: webhookId,
+        user_id: userId,
+        user_email: purchaser.email,
         product_id: configuredProductId,
       });
 
@@ -87,19 +119,19 @@ function createConfiguredWebhookHandler(
 
 export const POST = async (request: NextRequest) => {
   const routeLogger = createRouteLogger("/api/webhooks/creem", "POST", request);
-  routeLogger.flush();
-
-  if (!webhookSecret) {
-    routeLogger.warn("Creem webhook called without configuration");
-    return webhookNotConfigured();
-  }
-
-  const configuredWebhookHandler = createConfiguredWebhookHandler(routeLogger, webhookSecret);
-
   try {
+    if (!webhookSecret) {
+      routeLogger.warn("Creem webhook called without configuration");
+      return webhookNotConfigured();
+    }
+
+    const configuredWebhookHandler = createConfiguredWebhookHandler(routeLogger, webhookSecret);
+
     return await configuredWebhookHandler(request);
   } catch (error) {
     routeLogger.error("Creem webhook processing failed", error);
     throw error;
+  } finally {
+    await routeLogger.flush();
   }
 };

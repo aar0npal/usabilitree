@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { logs, SeverityNumber } from "@opentelemetry/api-logs";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
-import { LoggerProvider, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs";
+import { BatchLogRecordProcessor, LoggerProvider } from "@opentelemetry/sdk-logs";
 import { getPosthogIdentityFromHeaders } from "@/lib/posthog/request-identity";
 
 const serviceName = process.env.POSTHOG_SERVICE_NAME?.trim() || "usabilitree";
@@ -18,7 +18,7 @@ const posthogLogsUrl = process.env.POSTHOG_LOGS_URL ?? `${posthogLogsHost}/i/v1/
 
 const logProcessors = posthogProjectToken
   ? [
-      new SimpleLogRecordProcessor(
+      new BatchLogRecordProcessor(
         new OTLPLogExporter({
           url: posthogLogsUrl,
           headers: {

@@ -17,7 +17,6 @@ const checkoutHandler = apiKey
 export const GET = checkoutHandler
   ? async (req: NextRequest) => {
       const routeLogger = createRouteLogger("/api/checkout", "GET", req);
-      routeLogger.flush();
 
       try {
         const user = await getCurrentUser();
@@ -26,19 +25,20 @@ export const GET = checkoutHandler
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        routeLogger.setUser({ id: user.id, email: user.email });
+
         const configuredProductId = env.NEXT_PUBLIC_CREEM_PRODUCT_ID;
         if (!configuredProductId) {
-          routeLogger.error("Checkout product is not configured", undefined, {
-            user_id: user.id,
-          });
-          return NextResponse.json({ error: "Checkout product is not configured" }, { status: 503 });
+          routeLogger.error("Checkout product is not configured", undefined);
+          return NextResponse.json(
+            { error: "Checkout product is not configured" },
+            { status: 503 }
+          );
         }
 
         const requestedProductId = req.nextUrl.searchParams.get("productId");
         if (requestedProductId && requestedProductId !== configuredProductId) {
-          routeLogger.warn("Checkout request product mismatch", {
-            user_id: user.id,
-          });
+          routeLogger.warn("Checkout request product mismatch");
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
@@ -48,7 +48,6 @@ export const GET = checkoutHandler
         url.searchParams.set("referenceId", user.id);
 
         routeLogger.info("Checkout request forwarded", {
-          user_id: user.id,
           product_id: configuredProductId,
         });
 
@@ -56,11 +55,13 @@ export const GET = checkoutHandler
       } catch (error) {
         routeLogger.error("Checkout request failed", error);
         return NextResponse.json({ error: "Checkout failed" }, { status: 500 });
+      } finally {
+        await routeLogger.flush();
       }
     }
   : async () => {
       const routeLogger = createRouteLogger("/api/checkout", "GET");
-      routeLogger.flush();
       routeLogger.warn("Checkout called without configuration");
+      await routeLogger.flush();
       return NextResponse.json({ error: "Checkout is not configured" }, { status: 503 });
     };

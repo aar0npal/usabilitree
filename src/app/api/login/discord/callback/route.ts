@@ -14,7 +14,6 @@ import { createRouteLogger } from "@/lib/posthog/server-logs";
 
 export async function GET(request: Request): Promise<Response> {
   const routeLogger = createRouteLogger("/api/login/discord/callback", "GET", request);
-  routeLogger.flush();
 
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -48,6 +47,8 @@ export async function GET(request: Request): Promise<Response> {
         { status: 400, headers: { Location: Paths.Login } }
       );
     }
+    routeLogger.setUser({ email: discordUser.email });
+
     const [existingUser] = await db
       .select()
       .from(users)
@@ -59,6 +60,7 @@ export async function GET(request: Request): Promise<Response> {
 
     if (!existingUser) {
       const userId = generateId(21);
+      routeLogger.setUser({ id: userId });
       await db.insert(users).values({
         id: userId,
         email: discordUser.email,
@@ -73,9 +75,6 @@ export async function GET(request: Request): Promise<Response> {
         avatar
       );
       await setSession(userId);
-      routeLogger.info("Discord OAuth user created", {
-        user_id: userId,
-      });
 
       try {
         await createSampleTreeTestStudy();
@@ -91,6 +90,8 @@ export async function GET(request: Request): Promise<Response> {
       });
     }
 
+    routeLogger.setUser({ id: existingUser.id, email: existingUser.email });
+
     if (existingUser.discordId !== discordUser.id || existingUser.avatar !== avatar) {
       await db
         .update(users)
@@ -101,10 +102,6 @@ export async function GET(request: Request): Promise<Response> {
         })
         .where(eq(users.id, existingUser.id));
     }
-
-    routeLogger.info("Discord OAuth user signed in", {
-      user_id: existingUser.id,
-    });
 
     await setSession(existingUser.id);
     return new Response(null, {
@@ -126,6 +123,8 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(JSON.stringify({ message: "internal server error" }), {
       status: 500,
     });
+  } finally {
+    await routeLogger.flush();
   }
 }
 

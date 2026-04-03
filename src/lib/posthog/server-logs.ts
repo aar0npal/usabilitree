@@ -10,6 +10,11 @@ type RequestContext = {
   };
 };
 
+type RouteUserContext = {
+  id?: string;
+  email?: string;
+};
+
 const routeLogger = loggerProvider.getLogger("nextjs.route");
 
 function sanitizeAttributes(attributes: LogAttributes): Record<string, LogPrimitive> {
@@ -62,22 +67,44 @@ export function createRouteLogger(route: string, method: string, requestContext?
     ...posthogIdentityAttributes(requestContext),
   };
 
+  const routeUserContext: RouteUserContext = {};
+
+  function currentAttributes(): LogAttributes {
+    return {
+      ...baseAttributes,
+      user_id: routeUserContext.id,
+      user_email: routeUserContext.email,
+    };
+  }
+
   return {
+    setUser: (user: RouteUserContext) => {
+      if (user.id) {
+        routeUserContext.id = user.id;
+      }
+      if (user.email) {
+        routeUserContext.email = user.email;
+      }
+    },
     info: (body: string, attributes: LogAttributes = {}) => {
-      emit(SeverityNumber.INFO, body, { ...baseAttributes, ...attributes });
+      emit(SeverityNumber.INFO, body, { ...currentAttributes(), ...attributes });
     },
     warn: (body: string, attributes: LogAttributes = {}) => {
-      emit(SeverityNumber.WARN, body, { ...baseAttributes, ...attributes });
+      emit(SeverityNumber.WARN, body, { ...currentAttributes(), ...attributes });
     },
     error: (body: string, error: unknown, attributes: LogAttributes = {}) => {
       emit(SeverityNumber.ERROR, body, {
-        ...baseAttributes,
+        ...currentAttributes(),
         ...attributes,
         ...errorAttributes(error),
       });
     },
-    flush: () => {
-      // With SimpleLogRecordProcessor, each log is exported immediately.
+    flush: async () => {
+      try {
+        await loggerProvider.forceFlush();
+      } catch {
+        // Never fail request flow because of telemetry flush issues.
+      }
     },
   };
 }

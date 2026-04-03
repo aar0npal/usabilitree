@@ -42,11 +42,7 @@ function PostHogRequestHeadersBridge() {
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       try {
         const inputUrl =
-          typeof input === "string"
-            ? input
-            : input instanceof URL
-              ? input.toString()
-              : input.url;
+          typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
         const url = new URL(inputUrl, window.location.origin);
 
         if (url.origin !== window.location.origin) {
