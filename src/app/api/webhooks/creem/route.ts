@@ -20,10 +20,26 @@ function createConfiguredWebhookHandler(
   return Webhook({
     webhookSecret,
 
-    onCheckoutCompleted: async ({ customer, metadata, webhookId }) => {
+    onCheckoutCompleted: async ({ customer, metadata, webhookId, product }) => {
       if (!webhookId) {
         routeLogger.error("[creem/webhook] checkout.completed missing webhookId", undefined);
         throw new Error("missing webhookId");
+      }
+
+      const configuredProductId = env.NEXT_PUBLIC_CREEM_PRODUCT_ID;
+      if (!configuredProductId) {
+        routeLogger.error("[creem/webhook] checkout.completed missing configured product ID", undefined, {
+          webhook_id: webhookId,
+        });
+        throw new Error("missing configured product ID");
+      }
+
+      if (!product?.id || product.id !== configuredProductId) {
+        routeLogger.warn("[creem/webhook] checkout.completed ignored for unexpected product", {
+          webhook_id: webhookId,
+          product_id: product?.id,
+        });
+        return;
       }
 
       const userId = metadata?.referenceId;
@@ -60,6 +76,7 @@ function createConfiguredWebhookHandler(
       routeLogger.info("[creem/webhook] checkout.completed processed", {
         webhook_id: webhookId,
         user_id: userId,
+        product_id: configuredProductId,
       });
 
       revalidatePath("/dashboard/billing");

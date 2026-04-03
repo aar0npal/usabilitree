@@ -1,5 +1,6 @@
 import { SeverityNumber } from "@opentelemetry/api-logs";
 import { loggerProvider } from "@/instrumentation";
+import { getPosthogIdentityFromHeaders } from "@/lib/posthog/request-identity";
 
 type LogPrimitive = string | number | boolean;
 type LogAttributes = Record<string, LogPrimitive | null | undefined>;
@@ -45,12 +46,11 @@ function emit(severityNumber: SeverityNumber, body: string, attributes: LogAttri
 }
 
 function posthogIdentityAttributes(requestContext?: RequestContext): LogAttributes {
-  const distinctId = requestContext?.headers?.get("x-posthog-distinct-id")?.trim();
-  const sessionId = requestContext?.headers?.get("x-posthog-session-id")?.trim();
+  const identity = getPosthogIdentityFromHeaders(requestContext?.headers);
 
   return {
-    posthogDistinctId: distinctId || undefined,
-    sessionId: sessionId || undefined,
+    posthogDistinctId: identity.distinctId,
+    sessionId: identity.sessionId,
   };
 }
 

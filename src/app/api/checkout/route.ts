@@ -26,11 +26,30 @@ export const GET = checkoutHandler
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        const configuredProductId = env.NEXT_PUBLIC_CREEM_PRODUCT_ID;
+        if (!configuredProductId) {
+          routeLogger.error("Checkout product is not configured", undefined, {
+            user_id: user.id,
+          });
+          return NextResponse.json({ error: "Checkout product is not configured" }, { status: 503 });
+        }
+
+        const requestedProductId = req.nextUrl.searchParams.get("productId");
+        if (requestedProductId && requestedProductId !== configuredProductId) {
+          routeLogger.warn("Checkout request product mismatch", {
+            user_id: user.id,
+          });
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
         const url = req.nextUrl.clone();
+        url.search = "";
+        url.searchParams.set("productId", configuredProductId);
         url.searchParams.set("referenceId", user.id);
 
         routeLogger.info("Checkout request forwarded", {
           user_id: user.id,
+          product_id: configuredProductId,
         });
 
         return checkoutHandler(new NextRequest(url, { headers: req.headers }));

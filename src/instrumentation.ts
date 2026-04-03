@@ -3,6 +3,7 @@ import { logs, SeverityNumber } from "@opentelemetry/api-logs";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { LoggerProvider, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs";
+import { getPosthogIdentityFromHeaders } from "@/lib/posthog/request-identity";
 
 const serviceName = process.env.POSTHOG_SERVICE_NAME?.trim() || "usabilitree";
 const nodeEnv = process.env.NODE_ENV ?? "development";
@@ -133,15 +134,14 @@ function toPosthogRequestAttributes(request: unknown): Record<string, string> {
     };
   };
 
-  const distinctId = requestWithHeaders.headers?.get("x-posthog-distinct-id")?.trim();
-  const sessionId = requestWithHeaders.headers?.get("x-posthog-session-id")?.trim();
+  const identity = getPosthogIdentityFromHeaders(requestWithHeaders.headers);
 
   const attributes: Record<string, string> = {};
-  if (distinctId) {
-    attributes.posthogDistinctId = distinctId;
+  if (identity.distinctId) {
+    attributes.posthogDistinctId = identity.distinctId;
   }
-  if (sessionId) {
-    attributes.sessionId = sessionId;
+  if (identity.sessionId) {
+    attributes.sessionId = identity.sessionId;
   }
 
   return attributes;
