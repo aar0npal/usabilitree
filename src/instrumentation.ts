@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
+// @opentelemetry/api-logs is Edge-compatible (pure API, no Node.js deps).
+// The SDK implementation packages (sdk-logs, exporter-logs-otlp-http, resources)
+// are Node.js-only and are loaded via dynamic import inside register() below.
 import { logs, SeverityNumber } from "@opentelemetry/api-logs";
-import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
-import { resourceFromAttributes } from "@opentelemetry/resources";
-import { BatchLogRecordProcessor, LoggerProvider } from "@opentelemetry/sdk-logs";
 import { getPosthogIdentityFromHeaders } from "@/lib/posthog/request-identity";
 
 const serviceName = process.env.POSTHOG_SERVICE_NAME?.trim() || "usabilitree";
@@ -16,29 +16,18 @@ const posthogLogsHost = (
 ).replace(/\/$/, "");
 const posthogLogsUrl = process.env.POSTHOG_LOGS_URL ?? `${posthogLogsHost}/i/v1/logs`;
 
-const logProcessors = posthogProjectToken
-  ? [
-      new BatchLogRecordProcessor(
-        new OTLPLogExporter({
-          url: posthogLogsUrl,
-          headers: {
-            Authorization: `Bearer ${posthogProjectToken}`,
-            "Content-Type": "application/json",
-          },
-        })
-      ),
-    ]
-  : [];
-
-export const loggerProvider = new LoggerProvider({
-  resource: resourceFromAttributes({
-    "service.name": serviceName,
-    "deployment.environment": nodeEnv,
-  }),
-  processors: logProcessors,
-});
-
-const instrumentationLogger = loggerProvider.getLogger("nextjs.instrumentation");
+// Edge-compatible logger-provider proxy. Delegates to the global OTel provider,
+// which is the real Node.js SDK LoggerProvider after register() initialises it,
+// and the default no-op provider in the Edge runtime.
+export const loggerProvider = {
+  getLogger: (name: string) => logs.getLoggerProvider().getLogger(name),
+  forceFlush: async () => {
+    const provider = logs.getLoggerProvider() as { forceFlush?: () => Promise<void> };
+    if (typeof provider.forceFlush === "function") {
+      await provider.forceFlush();
+    }
+  },
+};
 
 function toLogBody(value: unknown): string {
   if (typeof value === "string") return value;
@@ -151,10 +140,38 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("../sentry.server.config");
 
-    logs.setGlobalLoggerProvider(loggerProvider);
+    // Dynamic imports keep Node.js-only SDK classes out of the Edge bundle.
+    const { BatchLogRecordProcessor, LoggerProvider } = await import("@opentelemetry/sdk-logs");
+    const { OTLPLogExporter } = await import("@opentelemetry/exporter-logs-otlp-http");
+    const { resourceFromAttributes } = await import("@opentelemetry/resources");
+
+    const logProcessors = posthogProjectToken
+      ? [
+          new BatchLogRecordProcessor(
+            new OTLPLogExporter({
+              url: posthogLogsUrl,
+              headers: {
+                Authorization: `Bearer ${posthogProjectToken}`,
+                "Content-Type": "application/json",
+              },
+            })
+          ),
+        ]
+      : [];
+
+    const sdkProvider = new LoggerProvider({
+      resource: resourceFromAttributes({
+        "service.name": serviceName,
+        "deployment.environment": nodeEnv,
+      }),
+      processors: logProcessors,
+    });
+
+    // Set as the global provider so loggerProvider proxy resolves to it.
+    logs.setGlobalLoggerProvider(sdkProvider);
     patchNodeConsoleLogs();
 
-    instrumentationLogger.emit({
+    loggerProvider.getLogger("nextjs.instrumentation").emit({
       body: posthogProjectToken
         ? "PostHog Logs initialized"
         : "PostHog Logs disabled (missing token)",
@@ -198,7 +215,7 @@ export const onRequestError: typeof Sentry.captureRequestError = (...args) => {
       }
     }
 
-    instrumentationLogger.emit({
+    loggerProvider.getLogger("nextjs.instrumentation").emit({
       body: "Unhandled Next.js request error",
       severityNumber: SeverityNumber.ERROR,
       attributes: {
