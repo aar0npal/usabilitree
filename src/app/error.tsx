@@ -14,7 +14,7 @@ export default function Error({
   const posthog = usePostHog();
 
   useEffect(() => {
-    posthog?.captureException(error);
+    posthog?.captureException?.(error);
   }, [error, posthog]);
 
   return (
