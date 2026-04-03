@@ -4,8 +4,8 @@ import { discord } from "@/lib/auth";
 import { env } from "@/env";
 import { createRouteLogger } from "@/lib/posthog/server-logs";
 
-export async function GET(): Promise<Response> {
-  const routeLogger = createRouteLogger("/api/login/discord", "GET");
+export async function GET(request: Request): Promise<Response> {
+  const routeLogger = createRouteLogger("/api/login/discord", "GET", request);
   routeLogger.flush();
 
   const state = generateState();

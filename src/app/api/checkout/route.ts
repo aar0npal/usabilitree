@@ -16,7 +16,7 @@ const checkoutHandler = apiKey
 
 export const GET = checkoutHandler
   ? async (req: NextRequest) => {
-      const routeLogger = createRouteLogger("/api/checkout", "GET");
+      const routeLogger = createRouteLogger("/api/checkout", "GET", req);
       routeLogger.flush();
 
       try {

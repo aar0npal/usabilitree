@@ -80,7 +80,7 @@ function getCurrentDate(): string {
 }
 
 export async function GET(request: NextRequest, { params }: { params: { studyId: string } }) {
-  const routeLogger = createRouteLogger("/api/export/[studyId]", "GET");
+  const routeLogger = createRouteLogger("/api/export/[studyId]", "GET", request);
   routeLogger.flush();
 
   try {

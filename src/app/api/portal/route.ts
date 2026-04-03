@@ -15,7 +15,7 @@ const portalHandler = apiKey
 
 export const GET = portalHandler
   ? async (req: NextRequest) => {
-      const routeLogger = createRouteLogger("/api/portal", "GET");
+      const routeLogger = createRouteLogger("/api/portal", "GET", req);
       routeLogger.flush();
 
       try {

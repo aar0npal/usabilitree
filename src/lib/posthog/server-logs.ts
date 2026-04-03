@@ -3,6 +3,11 @@ import { loggerProvider } from "@/instrumentation";
 
 type LogPrimitive = string | number | boolean;
 type LogAttributes = Record<string, LogPrimitive | null | undefined>;
+type RequestContext = {
+  headers?: {
+    get(name: string): string | null;
+  };
+};
 
 const routeLogger = loggerProvider.getLogger("nextjs.route");
 
@@ -39,8 +44,23 @@ function emit(severityNumber: SeverityNumber, body: string, attributes: LogAttri
   });
 }
 
-export function createRouteLogger(route: string, method: string) {
-  const baseAttributes = { route, method, source: "nextjs.route-handler" };
+function posthogIdentityAttributes(requestContext?: RequestContext): LogAttributes {
+  const distinctId = requestContext?.headers?.get("x-posthog-distinct-id")?.trim();
+  const sessionId = requestContext?.headers?.get("x-posthog-session-id")?.trim();
+
+  return {
+    posthogDistinctId: distinctId || undefined,
+    sessionId: sessionId || undefined,
+  };
+}
+
+export function createRouteLogger(route: string, method: string, requestContext?: RequestContext) {
+  const baseAttributes = {
+    route,
+    method,
+    source: "nextjs.route-handler",
+    ...posthogIdentityAttributes(requestContext),
+  };
 
   return {
     info: (body: string, attributes: LogAttributes = {}) => {

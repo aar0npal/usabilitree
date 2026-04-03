@@ -13,7 +13,7 @@ import { createSampleTreeTestStudy } from "@/lib/treetest/sample-actions";
 import { createRouteLogger } from "@/lib/posthog/server-logs";
 
 export async function GET(request: Request): Promise<Response> {
-  const routeLogger = createRouteLogger("/api/login/discord/callback", "GET");
+  const routeLogger = createRouteLogger("/api/login/discord/callback", "GET", request);
   routeLogger.flush();
 
   const url = new URL(request.url);

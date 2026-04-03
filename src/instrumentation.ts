@@ -126,6 +126,27 @@ function toErrorAttributes(error: unknown): Record<string, string> {
   };
 }
 
+function toPosthogRequestAttributes(request: unknown): Record<string, string> {
+  const requestWithHeaders = request as {
+    headers?: {
+      get(name: string): string | null;
+    };
+  };
+
+  const distinctId = requestWithHeaders.headers?.get("x-posthog-distinct-id")?.trim();
+  const sessionId = requestWithHeaders.headers?.get("x-posthog-session-id")?.trim();
+
+  const attributes: Record<string, string> = {};
+  if (distinctId) {
+    attributes.posthogDistinctId = distinctId;
+  }
+  if (sessionId) {
+    attributes.sessionId = sessionId;
+  }
+
+  return attributes;
+}
+
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("../sentry.server.config");
@@ -184,6 +205,7 @@ export const onRequestError: typeof Sentry.captureRequestError = (...args) => {
         source: "nextjs.onRequestError",
         route: pathname,
         method,
+        ...toPosthogRequestAttributes(request),
         ...toErrorAttributes(error),
       },
     });

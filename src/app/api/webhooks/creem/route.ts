@@ -12,67 +12,72 @@ function webhookNotConfigured() {
 }
 
 const webhookSecret = env.CREEM_WEBHOOK_SECRET;
-const routeLogger = createRouteLogger("/api/webhooks/creem", "POST");
 
-const configuredWebhookHandler = webhookSecret
-  ? Webhook({
-      webhookSecret: webhookSecret,
+function createConfiguredWebhookHandler(
+  routeLogger: ReturnType<typeof createRouteLogger>,
+  webhookSecret: string
+) {
+  return Webhook({
+    webhookSecret,
 
-      onCheckoutCompleted: async ({ customer, metadata, webhookId }) => {
-        if (!webhookId) {
-          routeLogger.error("[creem/webhook] checkout.completed missing webhookId", undefined);
-          throw new Error("missing webhookId");
-        }
+    onCheckoutCompleted: async ({ customer, metadata, webhookId }) => {
+      if (!webhookId) {
+        routeLogger.error("[creem/webhook] checkout.completed missing webhookId", undefined);
+        throw new Error("missing webhookId");
+      }
 
-        const userId = metadata?.referenceId;
-        if (!userId || typeof userId !== "string") {
-          routeLogger.error(
-            "[creem/webhook] checkout.completed missing metadata.referenceId",
-            undefined,
-            {
-              webhook_id: webhookId,
-            }
-          );
-          throw new Error("missing referenceId");
-        }
-        if (!/^[A-Za-z0-9]{10,50}$/.test(userId)) {
-          routeLogger.error(
-            "[creem/webhook] checkout.completed invalid metadata.referenceId format",
-            undefined,
-            {
-              webhook_id: webhookId,
-            }
-          );
-          throw new Error("invalid referenceId format");
-        }
-
-        await applyCreemCheckoutCredit(
+      const userId = metadata?.referenceId;
+      if (!userId || typeof userId !== "string") {
+        routeLogger.error(
+          "[creem/webhook] checkout.completed missing metadata.referenceId",
+          undefined,
           {
-            webhookId,
-            userId,
-            customerId: customer?.id,
-          },
-          db
+            webhook_id: webhookId,
+          }
         );
+        throw new Error("missing referenceId");
+      }
+      if (!/^[A-Za-z0-9]{10,50}$/.test(userId)) {
+        routeLogger.error(
+          "[creem/webhook] checkout.completed invalid metadata.referenceId format",
+          undefined,
+          {
+            webhook_id: webhookId,
+          }
+        );
+        throw new Error("invalid referenceId format");
+      }
 
-        routeLogger.info("[creem/webhook] checkout.completed processed", {
-          webhook_id: webhookId,
-          user_id: userId,
-        });
+      await applyCreemCheckoutCredit(
+        {
+          webhookId,
+          userId,
+          customerId: customer?.id,
+        },
+        db
+      );
 
-        revalidatePath("/dashboard/billing");
-        revalidatePath("/dashboard");
-      },
-    })
-  : null;
+      routeLogger.info("[creem/webhook] checkout.completed processed", {
+        webhook_id: webhookId,
+        user_id: userId,
+      });
+
+      revalidatePath("/dashboard/billing");
+      revalidatePath("/dashboard");
+    },
+  });
+}
 
 export const POST = async (request: NextRequest) => {
+  const routeLogger = createRouteLogger("/api/webhooks/creem", "POST", request);
   routeLogger.flush();
 
-  if (!configuredWebhookHandler) {
+  if (!webhookSecret) {
     routeLogger.warn("Creem webhook called without configuration");
     return webhookNotConfigured();
   }
+
+  const configuredWebhookHandler = createConfiguredWebhookHandler(routeLogger, webhookSecret);
 
   try {
     return await configuredWebhookHandler(request);

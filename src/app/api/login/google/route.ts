@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import { generateCodeVerifier, generateState } from "arctic";
 import { createRouteLogger } from "@/lib/posthog/server-logs";
 
-export async function GET(): Promise<Response> {
-  const routeLogger = createRouteLogger("/api/login/google", "GET");
+export async function GET(request: Request): Promise<Response> {
+  const routeLogger = createRouteLogger("/api/login/google", "GET", request);
   routeLogger.flush();
 
   const state = generateState();

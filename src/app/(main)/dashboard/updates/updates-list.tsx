@@ -361,8 +361,7 @@ const updates: Update[] = [
     id: "27",
     date: "2026-04-02",
     title: "Billing & Study Limit Update",
-    description:
-      "Introduced billing and temporarily reverting the free study limit to 3 for new accounts.",
+    description: "Introduced billing and reverting the free study limit to 3 for new accounts.",
     type: "message",
     details: [
       "Hello! I've added billing to the platform. Thank you so much for your continued support, it truly means a lot. 🙏",

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createRouteLogger } from "@/lib/posthog/server-logs";
 
-export async function GET() {
-  const routeLogger = createRouteLogger("/api/widget", "GET");
+export async function GET(request: Request) {
+  const routeLogger = createRouteLogger("/api/widget", "GET", request);
   routeLogger.flush();
 
   try {

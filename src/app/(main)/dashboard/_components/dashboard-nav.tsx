@@ -73,25 +73,50 @@ export function DashboardNav({ className }: Props) {
 
   return (
     <nav className={cn(className)}>
-      {items.map((item) => (
-        <Link id={item.id} href={item.href} key={item.href} onClick={() => handleNavClick(item)}>
-          <span
-            className={cn(
-              "group flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-              path === item.href ? "bg-accent" : "transparent"
-            )}
+      {items.map((item) => {
+        const isActive = path === item.href;
+        return (
+          <Link
+            id={item.id}
+            href={item.href}
+            key={item.href}
+            onClick={() => handleNavClick(item)}
+            className={cn("min-w-0 md:min-w-full", isActive ? "shrink-0" : "shrink")}
           >
-            <item.icon className="mr-2 h-4 w-4" />
-            <span>{item.title}</span>
-            {item.hasNewContent && hasUnreadUpdates && (
-              <span className="relative ml-2 flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-theme opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-theme"></span>
+            <span
+              className={cn(
+                "group flex min-w-0 items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                isActive ? "bg-accent" : "text-muted-foreground md:text-foreground"
+              )}
+            >
+              <item.icon
+                className={cn("h-4 w-4 shrink-0", isActive ? "mr-2" : "mr-1 md:mr-2")}
+              />
+              <span
+                className="overflow-hidden whitespace-nowrap"
+                style={
+                  !isActive
+                    ? {
+                        WebkitMaskImage:
+                          "linear-gradient(to right, black calc(100% - 12px), transparent 100%)",
+                        maskImage:
+                          "linear-gradient(to right, black calc(100% - 12px), transparent 100%)",
+                      }
+                    : undefined
+                }
+              >
+                {item.title}
               </span>
-            )}
-          </span>
-        </Link>
-      ))}
+              {item.hasNewContent && hasUnreadUpdates && (
+                <span className="relative ml-2 flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-theme opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-theme"></span>
+                </span>
+              )}
+            </span>
+          </Link>
+        );
+      })}
 
       <FeedbackButton />
       <RoadmapButton />
