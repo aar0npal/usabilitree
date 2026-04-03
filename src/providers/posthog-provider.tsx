@@ -17,7 +17,8 @@ if (typeof window !== "undefined") {
       capture_unhandled_rejections: true,
       capture_console_errors: true,
     },
-    disable_session_recording: true, // Disable session recording
+    // Prevent auto-start of session recording; started manually below for non-dev envs only
+    disable_session_recording: true,
     loaded: (posthog) => {
       if (process.env.NODE_ENV !== "development") posthog.startSessionRecording();
     },
