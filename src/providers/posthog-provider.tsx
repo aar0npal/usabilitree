@@ -17,6 +17,10 @@ if (typeof window !== "undefined") {
       capture_unhandled_rejections: true,
       capture_console_errors: true,
     },
+    // Avoid reading cssRules on cross-origin stylesheets (fonts/CDN CSS); replay still works without full CSS inlining.
+    session_recording: {
+      inlineStylesheet: false,
+    },
     // Prevent auto-start of session recording; started manually below for non-dev envs only
     disable_session_recording: true,
     loaded: (posthog) => {

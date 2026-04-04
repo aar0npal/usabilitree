@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "@/styles/globals.css";
+import "../styles/globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import LightIcon from "@/assets/icons/icon-light.svg";
 import DarkIcon from "@/assets/icons/icon-dark.svg";
