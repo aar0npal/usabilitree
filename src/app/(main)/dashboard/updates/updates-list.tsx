@@ -377,6 +377,18 @@ const updates: Update[] = [
       "Thank you for your patience and support. It genuinely keeps this project going! 🚀",
     ],
   },
+  {
+    id: "28",
+    date: "2026-04-24",
+    title: "Recalculate Stats Fix",
+    description: "Fixed a bug in Recalculate Stats that could flip task outcomes incorrectly.",
+    type: "fix",
+    details: [
+      "Recalculate Stats could pick the wrong leaf when a tree had multiple nodes with similar names, sometimes flipping Success to Fail (or the other way around). That's now fixed — matching uses the full path context instead of just the last segment.",
+      "Heads up: if you've used Recalculate Stats on any study before, please click it again to refresh your results with the fix applied.",
+      "Big thanks to the user who reported this on GitHub — really appreciate you flagging it. 🙏",
+    ],
+  },
 ];
 
 export function UpdatesList() {
