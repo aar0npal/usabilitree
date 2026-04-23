@@ -771,17 +771,40 @@ function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
     }
   }
 
-  // Fallback: segment-based matching for edge cases where no suffix match is found
+  // Third: multi-segment suffix matching for backtracking users.
+  // When a participant navigates through multiple branches before selecting a leaf,
+  // pathTaken accumulates segments from every branch visited (e.g. the user went
+  // through "support" before landing on "about-us/contact-us", so pathTaken becomes
+  // "/home/support/about-us/contact-us" while selectedLink is "/home/about-us/contact-us").
+  // The simple endsWith() check above fails in this case because the extra branch segments
+  // sit between the root prefix and the correct suffix.
+  //
+  // Fix: progressively build longer trailing suffixes of pathTaken (1 segment, 2, 3 …)
+  // and check how many valid links end with each suffix. The first suffix length that
+  // produces exactly one match unambiguously identifies the selected node.
+  //
+  // If all suffix lengths remain ambiguous (e.g. two sibling leaves share the exact
+  // same name at every ancestor level — extremely rare), fall through to the old
+  // single-segment heuristic as a last resort rather than returning null.
   const segments = pathTaken.split("/").filter(Boolean);
-  for (let i = segments.length - 1; i >= 0; i--) {
-    const targetNode = segments[i];
-    const validLink = validLinks.find((link) => link.endsWith(`/${targetNode}`));
-    if (validLink) {
-      return validLink;
+  let lastResortMatch: string | null = null;
+  for (let numSegments = 1; numSegments <= segments.length; numSegments++) {
+    const suffix = "/" + segments.slice(segments.length - numSegments).join("/");
+    const matches = validLinks.filter((link) => link.endsWith(suffix));
+    if (matches.length === 1) {
+      return matches[0];
+    }
+    if (matches.length === 0) {
+      // A longer suffix won't match either — stop early.
+      break;
+    }
+    // Multiple matches: keep the first as a last-resort candidate and try a longer suffix.
+    if (lastResortMatch === null) {
+      lastResortMatch = matches[0];
     }
   }
 
-  return null;
+  return lastResortMatch;
 }
 
 export async function recalculateStudyResults(studyId: string) {
