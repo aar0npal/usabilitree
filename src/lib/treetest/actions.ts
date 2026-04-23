@@ -788,6 +788,7 @@ function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
   // single-segment heuristic as a last resort rather than returning null.
   const segments = pathTaken.split("/").filter(Boolean);
   let lastResortMatch: string | null = null;
+  let currentBestMatchCount = Infinity;
   for (let numSegments = 1; numSegments <= segments.length; numSegments++) {
     const suffix = "/" + segments.slice(segments.length - numSegments).join("/");
     const matches = validLinks.filter((link) => link.endsWith(suffix));
@@ -798,9 +799,12 @@ function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
       // A longer suffix won't match either — stop early.
       break;
     }
-    // Multiple matches: keep the first as a last-resort candidate and try a longer suffix.
-    if (lastResortMatch === null) {
+    // Multiple matches: track the most specific (smallest) ambiguous set seen so far
+    // so the fallback reflects the longest suffix that still matched something, rather
+    // than the first (least-specific) ambiguous set.
+    if (lastResortMatch === null || matches.length < currentBestMatchCount) {
       lastResortMatch = matches[0];
+      currentBestMatchCount = matches.length;
     }
   }
 

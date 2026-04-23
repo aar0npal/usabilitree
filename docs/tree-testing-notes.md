@@ -33,17 +33,17 @@ This is fine *at the moment of completion* — the source of truth exists, it's 
 
 Added in January 2026 after a user reported that editing `expected_answer` didn't refresh historical stats. The button walks every result for a study and recomputes `successful`.
 
-Since `selected_link` was never stored, it has to reverse-engineer the participant's final selection from `path_taken` via `findLastValidPath(pathTaken, validLinks)` in `src/lib/treetest/actions.ts`.
+Since `selected_link` was never stored, it has to reverse-engineer the participant's final selection from `path_taken` via `findLastValidPath(tree, pathTaken)` in `src/lib/treetest/actions.ts`. The function collects every leaf `link` from the tree into `validLinks` and tries a series of matchers against `pathTaken`:
 
-What that function tries:
+1. **Longest-match suffix check** — sort `validLinks` by length descending; return the first link that `pathTaken.endsWith(link)`. Handles the happy path where the participant landed directly on a leaf.
+2. **Truncated-path fix-up** — append the last segment a second time (`pathTaken + "/" + lastSegment`) and retry (1). Works around an older `updatePathTaken` bug where a child with the same slug as its parent was deduped out.
+3. **Progressive multi-segment suffix** — build growing trailing suffixes of `pathTaken` (`/seg`, `/seg-1/seg`, …) and return the first length that produces exactly one match.
+4. **Last-resort fallback** — if every suffix length was ambiguous, return the first candidate from the most-specific (smallest) ambiguous set seen.
 
-1. **Primary**: progressively longer trailing suffixes of `pathTaken` → find a unique match in `validLinks`.
-2. **Fallback** (the bug): iterate path segments from the end and do `validLinks.find(link => link.endsWith('/${segment}'))`.
+Before this PR, step 3 didn't exist and step 4 was a naïve `validLinks.find(link => link.endsWith('/${segment}'))` using only the last segment of `pathTaken`. That fallback failed in two ways:
 
-The fallback fails in two ways:
-
-- `.find` returns the *first* link in array order whose terminal segment matches. Array order is whatever tree-parse order happened to be — effectively arbitrary. Two leaves named `contact-us` under different parents → 50/50 wrong.
-- When a user backtracks (opens `Kavita+` → decides wrong → closes it → opens `Third-Party` → clicks `OpenID Connect`), `path_taken` is `/kavita/third-party/openid-connect` but the selected leaf lives under `Third-Party`, not `Kavita+`. The heuristic has no way to know which branch the final click was in.
+- `.find` returned the *first* link in array order whose terminal segment matched. Array order is whatever tree-parse order happened to be — effectively arbitrary. Two leaves named `contact-us` under different parents → 50/50 wrong.
+- When a user backtracks (opens `Kavita+` → decides wrong → closes it → opens `Third-Party` → clicks `OpenID Connect`), `path_taken` is `/kavita/third-party/openid-connect` but the selected leaf lives under `Third-Party`, not `Kavita+`. The heuristic had no way to know which branch the final click was in.
 
 ### The drift this causes
 
