@@ -783,9 +783,10 @@ function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
   // and check how many valid links end with each suffix. The first suffix length that
   // produces exactly one match unambiguously identifies the selected node.
   //
-  // If all suffix lengths remain ambiguous (e.g. two sibling leaves share the exact
-  // same name at every ancestor level — extremely rare), fall through to the old
-  // single-segment heuristic as a last resort rather than returning null.
+  // If every suffix length is ambiguous (e.g. two sibling leaves share the exact
+  // same name at every ancestor level — extremely rare), return the first candidate
+  // from the smallest ambiguous set seen so far (tracked in lastResortMatch below)
+  // rather than returning null.
   const segments = pathTaken.split("/").filter(Boolean);
   let lastResortMatch: string | null = null;
   let currentBestMatchCount = Infinity;
