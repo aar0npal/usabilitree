@@ -49,3 +49,6 @@ dump.sql
 
 # Scripts directory
 scripts/*
+
+# Local-only design notes
+docs/tree-testing-notes.md
