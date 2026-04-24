@@ -737,9 +737,9 @@ export async function getStudyTasks(studyId: string) {
 
 /**
  * DFS-collect every leaf `link` from a parsed tree. Exposed separately from
- * `findLastValidPath` so callers that resolve many pathTaken strings against
- * the same tree (e.g. recalculateStudyResults, saveStudyData) can hoist this
- * O(nodes) walk out of their per-result loop.
+ * the resolver so callers that match many pathTaken strings against the same
+ * tree (e.g. recalculateStudyResults, saveStudyData) can hoist this O(nodes)
+ * walk out of their per-result loop.
  */
 function collectValidLinks(tree: TreeNode[]): string[] {
   const validLinks: string[] = [];
@@ -780,9 +780,6 @@ function sortValidLinks(validLinks: string[]): string[] {
  * `sortedLinks` to have been produced by `sortValidLinks` — the canonical
  * length-desc + lexicographic-tie-broken ordering is load-bearing for the
  * fallback's determinism.
- *
- * `findLastValidPath` is a convenience wrapper for single-shot callers that
- * only have the parsed tree.
  */
 function resolveSelectedLink(sortedLinks: string[], pathTaken: string): string | null {
   // First: check if pathTaken ends with a valid link (uses full path context to
@@ -848,16 +845,6 @@ function resolveSelectedLink(sortedLinks: string[], pathTaken: string): string |
   }
 
   return lastResortMatch;
-}
-
-/**
- * Convenience wrapper for single-shot callers. Hot loops should call the
- * three helpers directly — `collectValidLinks` + `sortValidLinks` once outside
- * the loop, then `resolveSelectedLink` per row — so neither the tree walk nor
- * the sort runs per result.
- */
-function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
-  return resolveSelectedLink(sortValidLinks(collectValidLinks(tree)), pathTaken);
 }
 
 export async function recalculateStudyResults(studyId: string) {

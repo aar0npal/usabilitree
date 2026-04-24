@@ -24,7 +24,7 @@ When a participant clicks a leaf to submit a task in `src/components/tree-test.t
 
 1. `selectedLink` is read directly from the clicked leaf node's `link` property.
 2. `successful = correctAnswers.includes(selectedLink)` — deterministic.
-3. `directPathTaken` is computed by comparing the visited node sequence to the expected path.
+3. `directPathTaken = selectedLink === pathTaken` — captures whether the participant navigated straight to the leaf or backtracked. It's a measure of navigation *directness*, completely independent of whether the answer was correct. (A participant can land on the wrong leaf directly, or land on the right leaf indirectly.)
 4. `pathTaken` is serialized to a slash-concatenated string for display, and **`selectedLink` is thrown away** once `successful` is derived from it.
 
 This is fine *at the moment of completion* — the source of truth exists, it's just not kept.
@@ -39,7 +39,7 @@ Since `selected_link` was never stored, it has to reverse-engineer the participa
 - `sortValidLinks(validLinks)` — length-desc order with a lexicographic tie-breaker so the fallback is deterministic even when two leaves share a length (without the tie-breaker, JS's stable sort would preserve DFS collection order for ties, leaking tree traversal order back into the result).
 - `resolveSelectedLink(sortedLinks, pathTaken)` — the actual matching logic; expects a list produced by `sortValidLinks`.
 
-`findLastValidPath(tree, pathTaken)` is a thin wrapper for single-shot callers. Hot loops (`recalculateStudyResults`, the answer-changed path in `saveStudyData`) call the helpers directly — `collectValidLinks` + `sortValidLinks` once outside the loop, `resolveSelectedLink` per row — so neither the tree walk nor the sort runs per result.
+Both hot callers (`recalculateStudyResults` and the answer-changed branch of `saveStudyData`) call the helpers directly: `collectValidLinks` + `sortValidLinks` once outside the loop, `resolveSelectedLink` per row. Neither the tree walk nor the sort runs per result.
 
 `resolveSelectedLink` walks through four steps against the sorted list:
 
@@ -60,7 +60,9 @@ Before this PR, step 3 didn't exist and step 4 was a naïve `validLinks.find(lin
 
 So a result can start as Success and become Fail after recalculation — even when `expected_answer` didn't change — purely because the recalc heuristic picked the wrong leaf.
 
-Bonus inconsistency: `recalculateStudyResults` only updates `successful`. It does **not** touch `direct_path_taken`. So if anything actually did change legitimately, the two booleans drift out of sync and you get rows labeled "Direct Fail" when the recalculation would have said "Indirect Success" (or vice versa).
+Aside on `direct_path_taken`: `recalculateStudyResults` not touching it is actually correct behavior. `direct_path_taken` is derived at submission time from `selectedLink === pathTaken` — it measures *navigation directness* (did the participant backtrack?), not *answer correctness* (did they land on a correct leaf?). Editing `expected_answer` has no bearing on whether they backtracked, so recalc shouldn't re-derive it. The two fields measure orthogonal things.
+
+The scenario where that *would* need rethinking is a future backfill that re-infers and persists `selected_link` from `path_taken`: if the inferred selection differs from whatever the participant originally clicked, `direct_path_taken` would need to be re-derived from the inferred selection to stay consistent. That's not a concern for today's recalc flow — it's a design point for when we add the `selected_link` column (§2).
 
 ### Impact
 
@@ -82,11 +84,11 @@ ALTER TABLE tree_task_results ADD COLUMN selected_link TEXT;
 
 - **Live completion**: write `selectedLink` at submit time — it's already in memory, just persist it.
 - **Recalculate**: becomes `successful = correctAnswers.includes(result.selected_link)`. No heuristics, identical logic to live completion.
-- **Also update `direct_path_taken`** in the recalc loop so the two outcome fields stay consistent.
+- **`direct_path_taken` stays derived from the leaf's `link` vs. `path_taken`.** Recalc doesn't need to touch it on `expected_answer` edits. But if a later migration backfills `selected_link` by inference (not ground truth), re-derive `direct_path_taken` in the same pass so both stay consistent with the inferred selection.
 
 ### Backfill strategy (two options)
 
-1. **Best-effort backfill** — run the improved `findLastValidPath` once on existing rows to populate `selected_link`. Flag with `selected_link_backfilled = true`. Accept that some rows are still wrong but at least they're stable (won't flip again on next Recalculate).
+1. **Best-effort backfill** — run the improved resolver (`resolveSelectedLink`) once on existing rows to populate `selected_link`, and re-derive `direct_path_taken` from the inferred selection at the same time. Flag with `selected_link_backfilled = true`. Accept that some rows are still wrong but at least they're stable (won't flip again on next Recalculate).
 2. **Honest** — leave `selected_link` NULL for pre-migration rows. Recalculate refuses to touch NULL rows and shows the owner a "X legacy results cannot be recalculated accurately" note.
 
 Lean toward option 2. Better to tell the owner "we don't know" than to silently lie with a guess.
@@ -222,5 +224,5 @@ This way legacy users don't lose their data, but there's a clear line: anything 
 ## TL;DR
 
 - **Today**: `selected_link` isn't stored, so Recalculate Stats guesses from `path_taken`. Guesses fail when trees have duplicate leaf names or users backtrack. The heuristic fix on `fix/recalculate-path-outcome` helps but doesn't fix the root cause.
-- **Short-term** (same schema): add `selected_link` column, write it at live completion, use it in Recalculate — no more heuristics. Also update `direct_path_taken` in the recalc loop so outcomes stay consistent.
+- **Short-term** (same schema): add `selected_link` column, write it at live completion, use it in Recalculate — no more heuristics. `direct_path_taken` stays as a directness measure and doesn't need to move on `expected_answer` edits; a backfill that infers `selected_link` should re-derive it in lockstep.
 - **Overhaul** (V2 schema): event-sourced model with stable node IDs and versioned trees. Outcomes become derived views. Recalculation is free. Tree edits no longer corrupt historical data. Whole classes of bugs disappear.
