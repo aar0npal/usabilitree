@@ -33,14 +33,15 @@ This is fine *at the moment of completion* — the source of truth exists, it's 
 
 Added in January 2026 after a user reported that editing `expected_answer` didn't refresh historical stats. The button walks every result for a study and recomputes `successful`.
 
-Since `selected_link` was never stored, it has to reverse-engineer the participant's final selection from `path_taken`. As of this PR the resolver is split into two helpers in `src/lib/treetest/actions.ts`:
+Since `selected_link` was never stored, it has to reverse-engineer the participant's final selection from `path_taken`. As of this PR the resolver is split into three helpers in `src/lib/treetest/actions.ts`:
 
 - `collectValidLinks(tree)` — DFS-collects every leaf `link` from the tree.
-- `resolveSelectedLink(validLinks, pathTaken)` — the actual matching logic.
+- `sortValidLinks(validLinks)` — length-desc order with a lexicographic tie-breaker so the fallback is deterministic even when two leaves share a length (without the tie-breaker, JS's stable sort would preserve DFS collection order for ties, leaking tree traversal order back into the result).
+- `resolveSelectedLink(sortedLinks, pathTaken)` — the actual matching logic; expects a list produced by `sortValidLinks`.
 
-`findLastValidPath(tree, pathTaken)` is a thin wrapper for single-shot callers. Hot loops (`recalculateStudyResults`, the answer-changed path in `saveStudyData`) call the two helpers directly so the tree walk doesn't rerun per result.
+`findLastValidPath(tree, pathTaken)` is a thin wrapper for single-shot callers. Hot loops (`recalculateStudyResults`, the answer-changed path in `saveStudyData`) call the helpers directly — `collectValidLinks` + `sortValidLinks` once outside the loop, `resolveSelectedLink` per row — so neither the tree walk nor the sort runs per result.
 
-`resolveSelectedLink` sorts `validLinks` by length descending once and then walks through four steps:
+`resolveSelectedLink` walks through four steps against the sorted list:
 
 1. **Longest-match suffix check** — return the first link that `pathTaken.endsWith(link)` using the sorted list, so the longest (most specific) match wins. Handles the happy path where the participant landed directly on a leaf.
 2. **Truncated-path fix-up** — append the last segment a second time (`pathTaken + "/" + lastSegment`) and retry (1). Works around an older `updatePathTaken` bug where a child with the same slug as its parent was deduped out.

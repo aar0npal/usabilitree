@@ -230,8 +230,8 @@ export async function saveStudyData(id: string, data: StudyFormData) {
 
         const now = new Date();
         // Precompute once: the tree is identical across every task's result
-        // re-evaluation, so we only need to walk it a single time per save.
-        const validLinks = collectValidLinks(data.tree.parsed);
+        // re-evaluation, so we only walk + sort it a single time per save.
+        const sortedLinks = sortValidLinks(collectValidLinks(data.tree.parsed));
 
         await Promise.all(
           existingTasks.map(async (task, index) => {
@@ -266,7 +266,7 @@ export async function saveStudyData(id: string, data: StudyFormData) {
 
               await Promise.all(
                 taskResults.map((result) => {
-                  const actualPath = resolveSelectedLink(validLinks, result.pathTaken);
+                  const actualPath = resolveSelectedLink(sortedLinks, result.pathTaken);
 
                   return tx
                     .update(treeTaskResults)
@@ -758,23 +758,36 @@ function collectValidLinks(tree: TreeNode[]): string[] {
 }
 
 /**
- * Resolve the leaf a participant most likely selected by matching their
- * accumulated pathTaken string against the study's valid leaf links.
+ * Produce the length-desc, lexicographic-tie-broken copy of `validLinks` that
+ * `resolveSelectedLink` expects. Exposed so hot loops can precompute once and
+ * pass the sorted list into every resolver call.
  *
- * Callers that already have `validLinks` for the study should call this
- * directly; `findLastValidPath` is a convenience wrapper for single-shot
- * callers that only have the parsed tree.
+ * The lexicographic tie-breaker matters: `Array.prototype.sort` is stable, so
+ * without it same-length links would keep their DFS collection order — which
+ * means reordering siblings in the tree could still flip which candidate wins
+ * in the ambiguous-fallback path.
  */
-function resolveSelectedLink(validLinks: string[], pathTaken: string): string | null {
-  // Sort by length descending once so every subsequent step inherits a stable
-  // "longest/most-specific wins" order. Using the sorted list in the suffix
-  // loop below also removes a subtle source of non-determinism: previously
-  // `matches[0]` from the unsorted list leaked DFS sibling order into the
-  // fallback, so reordering tree nodes could flip a result on re-recalculation.
-  const sortedLinks = [...validLinks].sort((a, b) => b.length - a.length);
+function sortValidLinks(validLinks: string[]): string[] {
+  return [...validLinks].sort((a, b) => {
+    const lengthDifference = b.length - a.length;
+    return lengthDifference !== 0 ? lengthDifference : a.localeCompare(b);
+  });
+}
 
+/**
+ * Resolve the leaf a participant most likely selected by matching their
+ * accumulated pathTaken string against the study's valid leaf links. Expects
+ * `sortedLinks` to have been produced by `sortValidLinks` — the canonical
+ * length-desc + lexicographic-tie-broken ordering is load-bearing for the
+ * fallback's determinism.
+ *
+ * `findLastValidPath` is a convenience wrapper for single-shot callers that
+ * only have the parsed tree.
+ */
+function resolveSelectedLink(sortedLinks: string[], pathTaken: string): string | null {
   // First: check if pathTaken ends with a valid link (uses full path context to
   // avoid mismatches when different branches have nodes with the same name).
+  // Because sortedLinks is length-desc the longest (most specific) match wins.
   for (const link of sortedLinks) {
     if (pathTaken.endsWith(link)) {
       return link;
@@ -810,8 +823,8 @@ function resolveSelectedLink(validLinks: string[], pathTaken: string): string | 
   // same name at every ancestor level — extremely rare), return the first candidate
   // from the smallest ambiguous set seen so far (tracked in lastResortMatch below)
   // rather than returning null. Because we filter from `sortedLinks`, that first
-  // candidate is the longest (most specific) match at that suffix level, not
-  // whatever happens to come first in tree-traversal order.
+  // candidate is the longest (most specific) match at that suffix level with a
+  // lexicographic tie-breaker — not whatever happens to come first in tree order.
   const segments = pathTaken.split("/").filter(Boolean);
   let lastResortMatch: string | null = null;
   let currentBestMatchCount = Infinity;
@@ -838,12 +851,13 @@ function resolveSelectedLink(validLinks: string[], pathTaken: string): string | 
 }
 
 /**
- * Convenience wrapper around `collectValidLinks` + `resolveSelectedLink` for
- * single-shot callers. Hot loops should call the two functions directly so
- * the tree walk doesn't run per result.
+ * Convenience wrapper for single-shot callers. Hot loops should call the
+ * three helpers directly — `collectValidLinks` + `sortValidLinks` once outside
+ * the loop, then `resolveSelectedLink` per row — so neither the tree walk nor
+ * the sort runs per result.
  */
 function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
-  return resolveSelectedLink(collectValidLinks(tree), pathTaken);
+  return resolveSelectedLink(sortValidLinks(collectValidLinks(tree)), pathTaken);
 }
 
 export async function recalculateStudyResults(studyId: string) {
@@ -867,8 +881,10 @@ export async function recalculateStudyResults(studyId: string) {
 
     const parsedTree = JSON.parse(configRow.parsedTree) as TreeNode[];
     // Precompute once: the tree is identical across every result in the study,
-    // so walking it per row (as the previous implementation did) was pure waste.
-    const validLinks = collectValidLinks(parsedTree);
+    // so walking + sorting per row (as the previous implementation did) was
+    // pure waste. The sort carries the determinism tie-breaker that the
+    // ambiguous fallback below relies on.
+    const sortedLinks = sortValidLinks(collectValidLinks(parsedTree));
 
     const tasks = await db.select().from(treeTasks).where(eq(treeTasks.studyId, studyId));
 
@@ -885,7 +901,7 @@ export async function recalculateStudyResults(studyId: string) {
       for (const result of results) {
         if (result.skipped) continue;
 
-        const actualPath = resolveSelectedLink(validLinks, result.pathTaken);
+        const actualPath = resolveSelectedLink(sortedLinks, result.pathTaken);
         const successful = actualPath ? correctAnswers.includes(actualPath) : false;
 
         if (result.successful !== successful) {
