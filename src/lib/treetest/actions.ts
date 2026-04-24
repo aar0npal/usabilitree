@@ -229,6 +229,9 @@ export async function saveStudyData(id: string, data: StudyFormData) {
           .orderBy(treeTasks.taskIndex);
 
         const now = new Date();
+        // Precompute once: the tree is identical across every task's result
+        // re-evaluation, so we only need to walk it a single time per save.
+        const validLinks = collectValidLinks(data.tree.parsed);
 
         await Promise.all(
           existingTasks.map(async (task, index) => {
@@ -263,7 +266,7 @@ export async function saveStudyData(id: string, data: StudyFormData) {
 
               await Promise.all(
                 taskResults.map((result) => {
-                  const actualPath = findLastValidPath(data.tree.parsed, result.pathTaken);
+                  const actualPath = resolveSelectedLink(validLinks, result.pathTaken);
 
                   return tx
                     .update(treeTaskResults)
@@ -732,26 +735,46 @@ export async function getStudyTasks(studyId: string) {
   }
 }
 
-function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
-  // Function to collect all valid links from tree
-  const collectLinks = (nodes: TreeNode[], validLinks: string[]) => {
+/**
+ * DFS-collect every leaf `link` from a parsed tree. Exposed separately from
+ * `findLastValidPath` so callers that resolve many pathTaken strings against
+ * the same tree (e.g. recalculateStudyResults, saveStudyData) can hoist this
+ * O(nodes) walk out of their per-result loop.
+ */
+function collectValidLinks(tree: TreeNode[]): string[] {
+  const validLinks: string[] = [];
+  const walk = (nodes: TreeNode[]) => {
     for (const node of nodes) {
       if (node.link) {
         validLinks.push(node.link);
       }
       if (node.children) {
-        collectLinks(node.children, validLinks);
+        walk(node.children);
       }
     }
   };
+  walk(tree);
+  return validLinks;
+}
 
-  const validLinks: string[] = [];
-  collectLinks(tree, validLinks);
+/**
+ * Resolve the leaf a participant most likely selected by matching their
+ * accumulated pathTaken string against the study's valid leaf links.
+ *
+ * Callers that already have `validLinks` for the study should call this
+ * directly; `findLastValidPath` is a convenience wrapper for single-shot
+ * callers that only have the parsed tree.
+ */
+function resolveSelectedLink(validLinks: string[], pathTaken: string): string | null {
+  // Sort by length descending once so every subsequent step inherits a stable
+  // "longest/most-specific wins" order. Using the sorted list in the suffix
+  // loop below also removes a subtle source of non-determinism: previously
+  // `matches[0]` from the unsorted list leaked DFS sibling order into the
+  // fallback, so reordering tree nodes could flip a result on re-recalculation.
+  const sortedLinks = [...validLinks].sort((a, b) => b.length - a.length);
 
   // First: check if pathTaken ends with a valid link (uses full path context to
   // avoid mismatches when different branches have nodes with the same name).
-  // Sort by length descending so the longest (most specific) match wins.
-  const sortedLinks = [...validLinks].sort((a, b) => b.length - a.length);
   for (const link of sortedLinks) {
     if (pathTaken.endsWith(link)) {
       return link;
@@ -786,13 +809,15 @@ function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
   // If every suffix length is ambiguous (e.g. two sibling leaves share the exact
   // same name at every ancestor level — extremely rare), return the first candidate
   // from the smallest ambiguous set seen so far (tracked in lastResortMatch below)
-  // rather than returning null.
+  // rather than returning null. Because we filter from `sortedLinks`, that first
+  // candidate is the longest (most specific) match at that suffix level, not
+  // whatever happens to come first in tree-traversal order.
   const segments = pathTaken.split("/").filter(Boolean);
   let lastResortMatch: string | null = null;
   let currentBestMatchCount = Infinity;
   for (let numSegments = 1; numSegments <= segments.length; numSegments++) {
     const suffix = "/" + segments.slice(segments.length - numSegments).join("/");
-    const matches = validLinks.filter((link) => link.endsWith(suffix));
+    const matches = sortedLinks.filter((link) => link.endsWith(suffix));
     if (matches.length === 1) {
       return matches[0];
     }
@@ -810,6 +835,15 @@ function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
   }
 
   return lastResortMatch;
+}
+
+/**
+ * Convenience wrapper around `collectValidLinks` + `resolveSelectedLink` for
+ * single-shot callers. Hot loops should call the two functions directly so
+ * the tree walk doesn't run per result.
+ */
+function findLastValidPath(tree: TreeNode[], pathTaken: string): string | null {
+  return resolveSelectedLink(collectValidLinks(tree), pathTaken);
 }
 
 export async function recalculateStudyResults(studyId: string) {
@@ -832,6 +866,9 @@ export async function recalculateStudyResults(studyId: string) {
     if (!configRow.parsedTree) throw new Error("No tree config found");
 
     const parsedTree = JSON.parse(configRow.parsedTree) as TreeNode[];
+    // Precompute once: the tree is identical across every result in the study,
+    // so walking it per row (as the previous implementation did) was pure waste.
+    const validLinks = collectValidLinks(parsedTree);
 
     const tasks = await db.select().from(treeTasks).where(eq(treeTasks.studyId, studyId));
 
@@ -848,7 +885,7 @@ export async function recalculateStudyResults(studyId: string) {
       for (const result of results) {
         if (result.skipped) continue;
 
-        const actualPath = findLastValidPath(parsedTree, result.pathTaken);
+        const actualPath = resolveSelectedLink(validLinks, result.pathTaken);
         const successful = actualPath ? correctAnswers.includes(actualPath) : false;
 
         if (result.successful !== successful) {

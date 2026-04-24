@@ -33,12 +33,19 @@ This is fine *at the moment of completion* — the source of truth exists, it's 
 
 Added in January 2026 after a user reported that editing `expected_answer` didn't refresh historical stats. The button walks every result for a study and recomputes `successful`.
 
-Since `selected_link` was never stored, it has to reverse-engineer the participant's final selection from `path_taken` via `findLastValidPath(tree, pathTaken)` in `src/lib/treetest/actions.ts`. The function collects every leaf `link` from the tree into `validLinks` and tries a series of matchers against `pathTaken`:
+Since `selected_link` was never stored, it has to reverse-engineer the participant's final selection from `path_taken`. As of this PR the resolver is split into two helpers in `src/lib/treetest/actions.ts`:
 
-1. **Longest-match suffix check** — sort `validLinks` by length descending; return the first link that `pathTaken.endsWith(link)`. Handles the happy path where the participant landed directly on a leaf.
+- `collectValidLinks(tree)` — DFS-collects every leaf `link` from the tree.
+- `resolveSelectedLink(validLinks, pathTaken)` — the actual matching logic.
+
+`findLastValidPath(tree, pathTaken)` is a thin wrapper for single-shot callers. Hot loops (`recalculateStudyResults`, the answer-changed path in `saveStudyData`) call the two helpers directly so the tree walk doesn't rerun per result.
+
+`resolveSelectedLink` sorts `validLinks` by length descending once and then walks through four steps:
+
+1. **Longest-match suffix check** — return the first link that `pathTaken.endsWith(link)` using the sorted list, so the longest (most specific) match wins. Handles the happy path where the participant landed directly on a leaf.
 2. **Truncated-path fix-up** — append the last segment a second time (`pathTaken + "/" + lastSegment`) and retry (1). Works around an older `updatePathTaken` bug where a child with the same slug as its parent was deduped out.
-3. **Progressive multi-segment suffix** — build growing trailing suffixes of `pathTaken` (`/seg`, `/seg-1/seg`, …) and return the first length that produces exactly one match.
-4. **Last-resort fallback** — if every suffix length was ambiguous, return the first candidate from the most-specific (smallest) ambiguous set seen.
+3. **Progressive multi-segment suffix** — build growing trailing suffixes of `pathTaken` (`/seg`, `/seg-1/seg`, …) and return the first length that produces exactly one match, again filtering from `sortedLinks` so hits are stable under tree reorganization.
+4. **Last-resort fallback** — if every suffix length was ambiguous, return the first candidate from the most-specific (smallest) ambiguous set seen. Because we filter from `sortedLinks`, that first candidate is the longest link at that suffix level, not whatever happens to come first in DFS order.
 
 Before this PR, step 3 didn't exist and step 4 was a naïve `validLinks.find(link => link.endsWith('/${segment}'))` using only the last segment of `pathTaken`. That fallback failed in two ways:
 
