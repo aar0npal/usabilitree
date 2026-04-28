@@ -258,6 +258,62 @@ Obrigado pelo seu interesse em participar.`,
       confidenceDescription: "Por favor selecione seu nível de confiança:",
     },
   },
+  {
+    name: "Italian",
+    code: "it",
+    messages: {
+      welcome: `Benvenuto/a e grazie per aver accettato di partecipare!
+
+Siamo **[inserire nome]** e Le chiediamo di aiutarci a migliorare [inserire "il nostro sito internet" o "la nostra applicazione" o altro].
+
+Di seguito Le verrà presentato un questionario composto da **[inserire numero domande]** brevi domande (dalla durata di circa **[inserire durata in minuti]**).
+
+Le descriveremo alcuni contenuti e informazioni e le chiederemo di identificare da un elenco la sezione che li contiene. Lei potrà selezionare l'elemento che ritiene più corretto.
+
+L'elenco assomiglia al menù di navigazione di un sito internet ma non si tratta di un sito reale. Si tratta solo di una rappresentazione sintetica di come viene organizzato.
+
+**Attenzione: non si tratta di un test delle Sue capacità, ma di un test sul nostro lavoro.**
+
+Per proseguire, vada alla pagina successiva...`,
+      completion: `# Grazie!
+
+Il test è finito! Le Sue risposte sono state registrate e può chiudere questa finestra.
+
+Il Suo feedback è prezioso e ci aiuterà a capire come organizzare al meglio i contenuti del nostro sito, per renderlo più semplice da navigare.
+
+A presto!`,
+    },
+    customText: {
+      instructions: `# Istruzioni
+
+_Di nuovo: non si tratta di un test delle Sue capacità, ma di un test sul nostro lavoro._
+
+**Ecco come funziona il test:**
+
+1. Le verrà chiesto di trovare un articolo o un'informazione all'interno dell'elenco di sezioni di [inserire "un sito" o "un'applicazione"].
+2. Navighi tra le sezioni finché non identifica la sezione che ritiene Le permetta di completare il compito.
+3. Se sbaglia strada, può sempre tornare indietro cliccando su un'altra sezione.
+4. Selezioni la sezione che ritiene corretta e clicchi sul pulsante "Penso che sia qui"
+
+![](instruction-img)`,
+      startTest: "Cominciamo",
+      findItHere: "Penso che sia qui",
+      startTask: "Andiamo alla domanda {0}",
+      confidenceQuestion: "Quanto è sicuro/a della Sua risposta?",
+      stronglyAgree: "Completamente sicuro/a",
+      stronglyDisagree: "Per nulla sicuro/a",
+      taskProgress: "Domanda {0} di {1}",
+      skipTask: "Salta questa domanda",
+      submitContinue: "Invia e Continua",
+      completedMessage: `# Grazie!
+
+Questo studio è stato completato. Abbiamo già raccolto tutte le risposte di cui avevamo bisogno.
+
+Grazie per il Suo interesse a partecipare.`,
+      nextButton: "Prossimo",
+      confidenceDescription: "Selezioni un valore da 1 a 7",
+    },
+  }
 ];
 
 export function getLanguagePreset(code: string): TreeTestTranslation {
