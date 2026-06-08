@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { storeTreeTaskResult } from "@/lib/treetest/actions";
 import { Item, ItemWithExpanded, TreeTestConfig } from "@/lib/types/tree-test";
-import { sanitizeTreeTestLink } from "@/lib/utils";
+import { cn, sanitizeTreeTestLink } from "@/lib/utils";
 import * as Sentry from "@sentry/react";
 import { ChevronDown, ChevronRight, CircleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -42,12 +42,21 @@ interface NavigationProps {
   onSelect: (link: string) => void;
   resetKey: number;
   setPathTaken: Dispatch<SetStateAction<string>>;
+  allowNonLeafAnswers: boolean;
   customText: {
     findItHere: string;
+    selectAsAnswer: string;
   };
 }
 
-const Navigation = ({ items, onSelect, resetKey, setPathTaken, customText }: NavigationProps) => {
+const Navigation = ({
+  items,
+  onSelect,
+  resetKey,
+  setPathTaken,
+  allowNonLeafAnswers,
+  customText,
+}: NavigationProps) => {
   const [treeState, setTreeState] = useState<ItemWithExpanded[]>([]);
   const [selectedLink, setSelectedLink] = useState<string>();
 
@@ -132,26 +141,104 @@ const Navigation = ({ items, onSelect, resetKey, setPathTaken, customText }: Nav
     setPathTaken((prev) => `${prev}/${sanitizeTreeTestLink(name)}`);
   };
 
+  const handleSelectNonLeaf = (currentPath: string[]) => {
+    const nodeLink = "/" + currentPath.map(sanitizeTreeTestLink).join("/");
+    // Use the dedupe-aware append so expand-then-select doesn't double-append the segment
+    setPathTaken((prev) => appendPath(prev, currentPath[currentPath.length - 1]));
+    onSelect(nodeLink);
+  };
+
   const renderItems = (items: ItemWithExpanded[], parentPath: string[] = []) => {
     return items.map((item) => {
       const currentPath = [...parentPath, item.name];
+      const nodeLink = "/" + currentPath.map(sanitizeTreeTestLink).join("/");
 
       return (
         <div key={item.name} className={`${parentPath.length ? "ml-4" : ""} mb-2`}>
           {item.children ? (
             <div>
-              <button
-                onClick={() => toggleExpand(currentPath)}
-                className="flex w-full items-center justify-between rounded bg-gray-200 px-3 py-2 text-sm transition-colors duration-200 hover:bg-gray-300"
-                aria-expanded={item.isExpanded}
-              >
-                <span>{item.name}</span>
-                {item.isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </button>
+              {allowNonLeafAnswers ? (
+                // When non-leaf answers are enabled: split row into toggle + reveal button.
+                // The outer div is the visual container; toggle is a flex-1 button so the
+                // expand/collapse affordance keeps its full natural click area.
+                <div
+                  className={cn(
+                    "group flex w-full items-center rounded transition-colors duration-200",
+                    nodeLink === selectedLink
+                      ? "border border-green-700 bg-[#e6f3d8]"
+                      : "bg-gray-200 hover:bg-gray-300"
+                  )}
+                >
+                  {/* Toggle button — expands/collapses; takes all remaining space */}
+                  <button
+                    onClick={() => toggleExpand(currentPath)}
+                    className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-sm"
+                    aria-expanded={item.isExpanded}
+                  >
+                    {/* Label with gradient fade before the reveal button */}
+                    <span className="relative min-w-0 flex-1 text-left">
+                      <span
+                        className={cn(
+                          "block truncate",
+                          // Fade visible when expanded (touch) or group-hover/focus-within (desktop)
+                          item.isExpanded || nodeLink === selectedLink
+                            ? "[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
+                            : "group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
+                        )}
+                      >
+                        {item.name}
+                      </span>
+                    </span>
+                    {item.isExpanded ? (
+                      <ChevronDown className="h-4 w-4 shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 shrink-0" />
+                    )}
+                  </button>
+
+                  {/* "Select as answer" button — revealed on hover/focus (desktop) and when
+                      expanded or already selected (touch, since there's no hover). */}
+                  <div
+                    className={cn(
+                      "shrink-0 pr-1 transition-opacity duration-150",
+                      item.isExpanded || nodeLink === selectedLink
+                        ? "opacity-100"
+                        : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                    )}
+                  >
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className={cn(
+                        "text-xs",
+                        nodeLink === selectedLink
+                          ? "bg-[#72FFA4] text-black hover:bg-[#00D9C2]"
+                          : "bg-gray-300 hover:bg-[#72FFA4] hover:text-black"
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectNonLeaf(currentPath);
+                      }}
+                    >
+                      {customText.selectAsAnswer}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                // Default: single expand/collapse button, no answer selection
+                <button
+                  onClick={() => toggleExpand(currentPath)}
+                  className="flex w-full items-center justify-between rounded bg-gray-200 px-3 py-2 text-sm transition-colors duration-200 hover:bg-gray-300"
+                  aria-expanded={item.isExpanded}
+                >
+                  <span>{item.name}</span>
+                  {item.isExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+              )}
               <div
                 className={`grid transition-all duration-300 ease-in-out ${
                   item.isExpanded ? "mt-2 grid-rows-[1fr]" : "grid-rows-[0fr]"
@@ -276,6 +363,7 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
           completionTimeSeconds: duration,
           confidenceRating: confidenceLevel ? parseInt(confidenceLevel) : undefined,
           pathTaken: pathTaken,
+          selectedLink: selectedLink,
           skipped: false,
         });
       } else {
@@ -321,6 +409,7 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
         directPathTaken: !pathTaken || pathTaken === `/${rootLink}`, // true if user didn't touch the nav menu = no path taken (direct skip)
         completionTimeSeconds: duration,
         pathTaken: pathTaken !== `/${rootLink}` ? pathTaken : "",
+        selectedLink: null,
         skipped: true,
       });
     }
@@ -408,8 +497,10 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
                 onSelect={handleSelection}
                 resetKey={resetKey}
                 setPathTaken={setPathTaken}
+                allowNonLeafAnswers={config.allowNonLeafAnswers}
                 customText={{
                   findItHere: config.customText.findItHere,
+                  selectAsAnswer: "Select",
                 }}
               />
             )}

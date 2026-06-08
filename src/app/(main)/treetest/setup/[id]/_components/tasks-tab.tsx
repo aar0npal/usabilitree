@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { StudyFormData, TreeNode } from "@/lib/types/tree-test";
+import { sanitizeTreeTestLink } from "@/lib/utils";
 import { PlusIcon, TrashIcon, CheckIcon } from "@/components/icons";
 import { ArrowUp } from "lucide-react";
 import {
@@ -34,13 +35,18 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
     Record<number, { valid: string[]; invalid: string[]; missing: boolean } | null>
   >({});
 
-  // Recursive function to get all available paths from the tree
+  // Recursive function to get all available paths from the tree.
+  // Uses sanitizeTreeTestLink (same as tree-tab.tsx) so paths are byte-identical
+  // to what the participant flow produces.
   const getAllPaths = (nodes: TreeNode[], parentPath = ""): string[] => {
     let paths: string[] = [];
     nodes.forEach((node) => {
-      const currentPath = `${parentPath}/${node.name.toLowerCase().replace(/\s+/g, "-")}`;
+      const currentPath = `${parentPath}/${sanitizeTreeTestLink(node.name)}`;
       if (node.link) {
         paths.push(node.link);
+      } else if (data.tasks.allowNonLeafAnswers) {
+        // Non-leaf: generate the path the same way tree-tab.tsx does for leaves
+        paths.push(currentPath);
       }
       if (node.children) {
         paths = [...paths, ...getAllPaths(node.children, currentPath)];
@@ -87,15 +93,10 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
     }
   };
 
-  // Recursive function to check if a path exists in the tree
-  const checkPathInTree = (nodes: TreeNode[], path: string): boolean => {
-    for (const node of nodes) {
-      if (node.link === path) return true;
-      if (node.children && node.children.length > 0) {
-        if (checkPathInTree(node.children, path)) return true;
-      }
-    }
-    return false;
+  // Check membership against the already-computed availablePaths set (includes
+  // non-leaf paths when allowNonLeafAnswers is on) so validation and picker agree.
+  const checkPathInTree = (_nodes: TreeNode[], path: string): boolean => {
+    return availablePaths.includes(path);
   };
 
   const validateAnswer = (index: number) => {
@@ -169,6 +170,23 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
           Randomize task order for each participant
         </Label>
       </div>
+      <div className="flex items-center gap-3 rounded-lg border p-4">
+        <Switch
+          id="allow-non-leaf-answers"
+          checked={data.tasks.allowNonLeafAnswers ?? false}
+          onCheckedChange={(checked) =>
+            onChange({ ...data, tasks: { ...data.tasks, allowNonLeafAnswers: checked } })
+          }
+        />
+        <div className="flex flex-col gap-0.5">
+          <Label htmlFor="allow-non-leaf-answers" className="cursor-pointer">
+            Allow non-leaf (parent) nodes as answers
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            When on, parent category nodes can be set as correct answers for tasks.
+          </p>
+        </div>
+      </div>
       {data.tasks.items.map((task, index) => (
         <div key={index} className="relative space-y-4 rounded-lg border p-4">
           <div className="flex items-center justify-between">
@@ -212,8 +230,11 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              All paths must start with <code className="rounded bg-muted px-1 py-0.5">/</code> and
-              must be a leaf (final destination) in the tree (e.g., /home/products)
+              All paths must start with{" "}
+              <code className="rounded bg-muted px-1 py-0.5">/</code>
+              {data.tasks.allowNonLeafAnswers
+                ? " and must exist in the tree (leaf or parent node, e.g., /home/products or /home)"
+                : " and must be a leaf (final destination) in the tree (e.g., /home/products)"}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
               <Popover

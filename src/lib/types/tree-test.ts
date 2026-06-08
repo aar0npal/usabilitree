@@ -14,6 +14,7 @@ export interface StudyFormData {
       answer: string;
     }>;
     randomizeTasks?: boolean;
+    allowNonLeafAnswers?: boolean;
   };
   messages: {
     welcome: string;
@@ -60,6 +61,7 @@ export interface TreeTestConfig {
   }[];
   requireConfidenceRating: boolean;
   randomizeTasks: boolean;
+  allowNonLeafAnswers: boolean;
   preview: boolean;
   participantId?: string;
   studyId: string;

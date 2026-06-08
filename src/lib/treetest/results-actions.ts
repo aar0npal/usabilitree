@@ -383,10 +383,15 @@ export async function getTasksStats(studyId: string): Promise<TaskStats[]> {
         const expectedAnswers = task.expectedAnswer.split(",").map((answer) => answer.trim());
 
         const expectedParentPaths = expectedAnswers.map((answer) => {
+          // If the answer is itself a top-level parent path (e.g. "/settings"), keep it as-is
+          // so it isn't re-derived to a shorter ancestor and mislabeled in the table.
+          // For deeper answers (e.g. "/settings/general"), derive the first-level parent.
           const expectedParts = answer.split("/").filter(Boolean);
-          return hasOnlyHomeRoot && expectedParts.length > 1
-            ? `/${homeRoot}/${expectedParts[1]}`
-            : `/${expectedParts[0]}`;
+          if (hasOnlyHomeRoot && expectedParts.length > 1) {
+            // Under a single home root, the "first-level parent" is the second segment
+            return `/${homeRoot}/${expectedParts[1]}`;
+          }
+          return `/${expectedParts[0]}`;
         });
 
         // For each possible parent name, check if it appears in the path

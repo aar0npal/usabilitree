@@ -121,6 +121,9 @@ export const treeConfigs = sqliteTable("tree_configs", {
     .notNull()
     .default(true),
   randomizeTasks: integer("randomize_tasks", { mode: "boolean" }).notNull().default(false),
+  allowNonLeafAnswers: integer("allow_non_leaf_answers", { mode: "boolean" })
+    .notNull()
+    .default(false),
   // Customizable text fields
   instructionsText: text("instructions_text"),
   startTestText: text("start_test_text"),
@@ -200,6 +203,7 @@ export const treeTaskResults = sqliteTable(
     completionTimeSeconds: integer("completion_time_seconds").notNull(),
     confidenceRating: integer("confidence_rating"),
     pathTaken: text("path_taken").notNull(),
+    selectedLink: text("selected_link"),
     skipped: integer("skipped", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()

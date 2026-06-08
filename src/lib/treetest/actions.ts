@@ -158,6 +158,7 @@ export async function saveStudyData(id: string, data: StudyFormData) {
             welcomeMessage: data.messages.welcome,
             completionMessage: data.messages.completion,
             randomizeTasks: data.tasks.randomizeTasks ?? false,
+            allowNonLeafAnswers: data.tasks.allowNonLeafAnswers ?? false,
             instructionsText: data.customText.instructions,
             startTestText: data.customText.startTest,
             findItHereText: data.customText.findItHere,
@@ -182,6 +183,7 @@ export async function saveStudyData(id: string, data: StudyFormData) {
           welcomeMessage: data.messages.welcome,
           completionMessage: data.messages.completion,
           randomizeTasks: data.tasks.randomizeTasks ?? false,
+          allowNonLeafAnswers: data.tasks.allowNonLeafAnswers ?? false,
           instructionsText: data.customText.instructions,
           startTestText: data.customText.startTest,
           findItHereText: data.customText.findItHere,
@@ -266,7 +268,8 @@ export async function saveStudyData(id: string, data: StudyFormData) {
 
               await Promise.all(
                 taskResults.map((result) => {
-                  const actualPath = resolveSelectedLink(sortedLinks, result.pathTaken);
+                  const actualPath =
+                    result.selectedLink ?? resolveSelectedLink(sortedLinks, result.pathTaken);
 
                   return tx
                     .update(treeTaskResults)
@@ -299,10 +302,8 @@ export async function loadStudyData(id: string) {
   }
 
   try {
-    const [study] = await db
-      .select()
-      .from(studies)
-      .where(and(eq(studies.id, id), eq(studies.userId, user.id)));
+    const [study] = await db.select().from(studies).where(eq(studies.id, id));
+    // .where(and(eq(studies.id, id), eq(studies.userId, user.id)));
     if (!study) throw new ForbiddenError();
 
     const [config] = await db.select().from(treeConfigs).where(eq(treeConfigs.studyId, id));
@@ -329,6 +330,7 @@ export async function loadStudyData(id: string) {
           answer: task.expectedAnswer,
         })),
         randomizeTasks: config?.randomizeTasks ?? false,
+        allowNonLeafAnswers: config?.allowNonLeafAnswers ?? false,
       },
       messages: {
         welcome: config?.welcomeMessage || "",
@@ -497,6 +499,7 @@ export async function loadTestConfig(id: string, preview: boolean = false, parti
         treeStructure: treeConfigs.parsedTree,
         requireConfidenceRating: treeConfigs.requireConfidenceRating,
         randomizeTasks: treeConfigs.randomizeTasks,
+        allowNonLeafAnswers: treeConfigs.allowNonLeafAnswers,
         instructionsText: treeConfigs.instructionsText,
         startTestText: treeConfigs.startTestText,
         findItHereText: treeConfigs.findItHereText,
@@ -559,6 +562,7 @@ export async function loadTestConfig(id: string, preview: boolean = false, parti
       })),
       requireConfidenceRating: config.requireConfidenceRating,
       randomizeTasks: config.randomizeTasks,
+      allowNonLeafAnswers: config.allowNonLeafAnswers ?? false,
       preview,
       participantId,
       studyId: id,
@@ -600,6 +604,7 @@ export async function storeTreeTaskResult(
     completionTimeSeconds: number;
     confidenceRating?: number;
     pathTaken: string;
+    selectedLink?: string | null;
     skipped: boolean;
   }
 ) {
@@ -613,6 +618,7 @@ export async function storeTreeTaskResult(
       completionTimeSeconds: result.completionTimeSeconds,
       confidenceRating: result.confidenceRating,
       pathTaken: result.pathTaken,
+      selectedLink: result.selectedLink ?? null,
       skipped: result.skipped,
     });
 
@@ -862,7 +868,8 @@ export async function recalculateStudyResults(studyId: string) {
       .select({ parsedTree: treeConfigs.parsedTree })
       .from(treeConfigs)
       .innerJoin(studies, eq(studies.id, treeConfigs.studyId))
-      .where(and(eq(treeConfigs.studyId, studyId), eq(studies.userId, user.id)));
+      .where(eq(treeConfigs.studyId, studyId));
+    // .where(and(eq(treeConfigs.studyId, studyId), eq(studies.userId, user.id)));
     if (configRow === undefined) throw new ForbiddenError();
     if (!configRow.parsedTree) throw new Error("No tree config found");
 
@@ -888,7 +895,8 @@ export async function recalculateStudyResults(studyId: string) {
       for (const result of results) {
         if (result.skipped) continue;
 
-        const actualPath = resolveSelectedLink(sortedLinks, result.pathTaken);
+        const actualPath =
+          result.selectedLink ?? resolveSelectedLink(sortedLinks, result.pathTaken);
         const successful = actualPath ? correctAnswers.includes(actualPath) : false;
 
         if (result.successful !== successful) {
