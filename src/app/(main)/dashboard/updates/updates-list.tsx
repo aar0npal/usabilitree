@@ -388,6 +388,18 @@ const updates: Update[] = [
       "If you've clicked Recalculate Stats on any study before, click it again to refresh your results.",
     ],
   },
+  {
+    id: "29",
+    date: "2026-06-08",
+    title: "Allow Non-Leaf Nodes as Answers",
+    description:
+      "You can now set parent (non-leaf) nodes as correct answers for tree test tasks.",
+    type: "feature",
+    details: [
+      "Correct answer paths can now point to a parent category, not just the final (leaf) item in your tree.",
+      "Helpful when the expected destination is a whole section rather than one specific page.",
+    ],
+  },
 ];
 
 export function UpdatesList() {
