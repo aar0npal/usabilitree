@@ -392,8 +392,7 @@ const updates: Update[] = [
     id: "29",
     date: "2026-06-08",
     title: "Allow Non-Leaf Nodes as Answers",
-    description:
-      "You can now set parent (non-leaf) nodes as correct answers for tree test tasks.",
+    description: "You can now set parent (non-leaf) nodes as correct answers for tree test tasks.",
     type: "feature",
     details: [
       "Correct answer paths can now point to a parent category, not just the final (leaf) item in your tree.",

@@ -236,8 +236,7 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              All paths must start with{" "}
-              <code className="rounded bg-muted px-1 py-0.5">/</code>
+              All paths must start with <code className="rounded bg-muted px-1 py-0.5">/</code>
               {data.tasks.allowNonLeafAnswers
                 ? " and must exist in the tree (leaf or parent node, e.g., /home/products or /home)"
                 : " and must be a leaf (final destination) in the tree (e.g., /home/products)"}

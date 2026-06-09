@@ -313,7 +313,7 @@ Grazie per il Suo interesse a partecipare.`,
       nextButton: "Prossimo",
       confidenceDescription: "Selezioni un valore da 1 a 7",
     },
-  }
+  },
 ];
 
 export function getLanguagePreset(code: string): TreeTestTranslation {

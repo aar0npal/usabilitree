@@ -236,7 +236,7 @@ export function TreePreview({
                           // Desktop (sm+): fade only while the button is revealed.
                           "block truncate text-gray-900 [mask-image:linear-gradient(to_right,black_70%,transparent_100%)]",
                           !(node.isExpanded || nodeLink === selectedLink) &&
-                            "sm:[mask-image:none] sm:[@media(hover:hover)]:group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] sm:group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
+                            "sm:[mask-image:none] sm:group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] sm:[@media(hover:hover)]:group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
                         )}
                       >
                         {node.name}
@@ -247,7 +247,7 @@ export function TreePreview({
                     className={cn(
                       "shrink-0 opacity-100 transition-opacity duration-150",
                       !(node.isExpanded || nodeLink === selectedLink) &&
-                        "sm:opacity-0 sm:[@media(hover:hover)]:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                        "sm:opacity-0 sm:group-focus-within:opacity-100 sm:[@media(hover:hover)]:group-hover:opacity-100"
                     )}
                   >
                     <Button
