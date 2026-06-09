@@ -143,6 +143,7 @@ const Navigation = ({
 
   const handleSelectNonLeaf = (currentPath: string[]) => {
     const nodeLink = "/" + currentPath.map(sanitizeTreeTestLink).join("/");
+    setSelectedLink(nodeLink);
     // Use the dedupe-aware append so expand-then-select doesn't double-append the segment
     setPathTaken((prev) => appendPath(prev, currentPath[currentPath.length - 1]));
     onSelect(nodeLink);

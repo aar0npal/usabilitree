@@ -302,8 +302,10 @@ export async function loadStudyData(id: string) {
   }
 
   try {
-    const [study] = await db.select().from(studies).where(eq(studies.id, id));
-    // .where(and(eq(studies.id, id), eq(studies.userId, user.id)));
+    const [study] = await db
+      .select()
+      .from(studies)
+      .where(and(eq(studies.id, id), eq(studies.userId, user.id)));
     if (!study) throw new ForbiddenError();
 
     const [config] = await db.select().from(treeConfigs).where(eq(treeConfigs.studyId, id));
@@ -868,8 +870,7 @@ export async function recalculateStudyResults(studyId: string) {
       .select({ parsedTree: treeConfigs.parsedTree })
       .from(treeConfigs)
       .innerJoin(studies, eq(studies.id, treeConfigs.studyId))
-      .where(eq(treeConfigs.studyId, studyId));
-    // .where(and(eq(treeConfigs.studyId, studyId), eq(studies.userId, user.id)));
+      .where(and(eq(treeConfigs.studyId, studyId), eq(studies.userId, user.id)));
     if (configRow === undefined) throw new ForbiddenError();
     if (!configRow.parsedTree) throw new Error("No tree config found");
 
