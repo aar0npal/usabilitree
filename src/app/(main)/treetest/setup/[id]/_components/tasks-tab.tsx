@@ -174,9 +174,11 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
         <Switch
           id="allow-non-leaf-answers"
           checked={data.tasks.allowNonLeafAnswers ?? false}
-          onCheckedChange={(checked) =>
-            onChange({ ...data, tasks: { ...data.tasks, allowNonLeafAnswers: checked } })
-          }
+          onCheckedChange={(checked) => {
+            onChange({ ...data, tasks: { ...data.tasks, allowNonLeafAnswers: checked } });
+            // Toggling changes which paths are valid, so stale results would mislead
+            setValidationResults({});
+          }}
         />
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="allow-non-leaf-answers" className="cursor-pointer">
