@@ -167,7 +167,7 @@ const Navigation = ({
                     "group flex w-full items-center rounded transition-colors duration-200",
                     nodeLink === selectedLink
                       ? "border border-green-700 bg-[#e6f3d8]"
-                      : "bg-gray-200 hover:bg-gray-300"
+                      : "bg-gray-200 [@media(hover:hover)]:hover:bg-gray-300"
                   )}
                 >
                   {/* Toggle button — expands/collapses; takes all remaining space */}
@@ -184,7 +184,7 @@ const Navigation = ({
                           // Desktop (sm+): fade only while the button is revealed.
                           "block truncate [mask-image:linear-gradient(to_right,black_70%,transparent_100%)]",
                           !(item.isExpanded || nodeLink === selectedLink) &&
-                            "sm:[mask-image:none] sm:group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] sm:group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
+                            "sm:[mask-image:none] sm:[@media(hover:hover)]:group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] sm:group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
                         )}
                       >
                         {item.name}
@@ -200,7 +200,7 @@ const Navigation = ({
                     className={cn(
                       "shrink-0 opacity-100 transition-opacity duration-150",
                       !(item.isExpanded || nodeLink === selectedLink) &&
-                        "sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                        "sm:opacity-0 sm:[@media(hover:hover)]:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                     )}
                   >
                     <Button
@@ -209,8 +209,8 @@ const Navigation = ({
                       className={cn(
                         "text-xs",
                         nodeLink === selectedLink
-                          ? "bg-[#72FFA4] text-black hover:bg-[#00D9C2]"
-                          : "bg-gray-300 hover:bg-[#72FFA4] hover:text-black"
+                          ? "bg-[#72FFA4] text-black [@media(hover:hover)]:hover:bg-[#00D9C2]"
+                          : "bg-gray-300 [@media(hover:hover)]:hover:bg-[#72FFA4] [@media(hover:hover)]:hover:text-black"
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -240,7 +240,7 @@ const Navigation = ({
                 // Default: single expand/collapse button, no answer selection
                 <button
                   onClick={() => toggleExpand(currentPath)}
-                  className="flex w-full items-center justify-between rounded bg-gray-200 px-3 py-2 text-sm transition-colors duration-200 hover:bg-gray-300"
+                  className="flex w-full items-center justify-between rounded bg-gray-200 px-3 py-2 text-sm transition-colors duration-200 [@media(hover:hover)]:hover:bg-gray-300"
                   aria-expanded={item.isExpanded}
                 >
                   <span>{item.name}</span>
@@ -264,7 +264,7 @@ const Navigation = ({
               className={`my-1 flex items-center justify-between rounded p-2 transition-colors duration-200 ${
                 item.link === selectedLink
                   ? "border border-green-700 bg-[#e6f3d8]"
-                  : "bg-gray-200 hover:bg-gray-300"
+                  : "bg-gray-200 [@media(hover:hover)]:hover:bg-gray-300"
               }`}
               onClick={() => handleLinkClick(item.link ?? "", item.name)}
             >
@@ -273,7 +273,7 @@ const Navigation = ({
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="bg-[#72FFA4] text-black hover:bg-[#00D9C2]"
+                  className="bg-[#72FFA4] text-black [@media(hover:hover)]:hover:bg-[#00D9C2]"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSelect(item.link ?? "");

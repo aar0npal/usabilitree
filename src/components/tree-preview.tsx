@@ -221,7 +221,7 @@ export function TreePreview({
                     "group flex w-full items-center rounded transition-colors duration-200",
                     nodeLink === selectedLink
                       ? "border border-green-700 bg-[#e6f3d8]"
-                      : "bg-gray-200 hover:bg-gray-300"
+                      : "bg-gray-200 [@media(hover:hover)]:hover:bg-gray-300"
                   )}
                 >
                   <button
@@ -236,7 +236,7 @@ export function TreePreview({
                           // Desktop (sm+): fade only while the button is revealed.
                           "block truncate text-gray-900 [mask-image:linear-gradient(to_right,black_70%,transparent_100%)]",
                           !(node.isExpanded || nodeLink === selectedLink) &&
-                            "sm:[mask-image:none] sm:group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] sm:group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
+                            "sm:[mask-image:none] sm:[@media(hover:hover)]:group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] sm:group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
                         )}
                       >
                         {node.name}
@@ -247,7 +247,7 @@ export function TreePreview({
                     className={cn(
                       "shrink-0 opacity-100 transition-opacity duration-150",
                       !(node.isExpanded || nodeLink === selectedLink) &&
-                        "sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                        "sm:opacity-0 sm:[@media(hover:hover)]:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                     )}
                   >
                     <Button
@@ -256,8 +256,8 @@ export function TreePreview({
                       className={cn(
                         "text-xs",
                         nodeLink === selectedLink
-                          ? "bg-[#72FFA4] text-black hover:bg-[#00D9C2]"
-                          : "bg-gray-300 hover:bg-[#72FFA4] hover:text-black"
+                          ? "bg-[#72FFA4] text-black [@media(hover:hover)]:hover:bg-[#00D9C2]"
+                          : "bg-gray-300 [@media(hover:hover)]:hover:bg-[#72FFA4] [@media(hover:hover)]:hover:text-black"
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -285,8 +285,8 @@ export function TreePreview({
                   onClick={() => toggleExpand(node, currentPath)}
                   className={`flex w-full items-center justify-between rounded px-3 py-2 text-sm transition-colors duration-200 ${
                     showParticipantView
-                      ? "bg-gray-200 hover:bg-gray-300"
-                      : "bg-gray-100 hover:bg-gray-200"
+                      ? "bg-gray-200 [@media(hover:hover)]:hover:bg-gray-300"
+                      : "bg-gray-100 [@media(hover:hover)]:hover:bg-gray-200"
                   }`}
                   aria-expanded={node.isExpanded}
                 >
@@ -315,14 +315,14 @@ export function TreePreview({
                 showParticipantView
                   ? selectedLink === node.link
                     ? "cursor-pointer border border-green-700 bg-[#e6f3d8]"
-                    : "cursor-pointer bg-gray-200 hover:bg-gray-300"
+                    : "cursor-pointer bg-gray-200 [@media(hover:hover)]:hover:bg-gray-300"
                   : "bg-gray-50"
               }`}
               onClick={() => handleLinkClick(node.link || "")}
             >
               <span className="text-gray-900">{node.name}</span>
               {showParticipantView && selectedLink === node.link ? (
-                <button className="rounded bg-[#72FFA4] px-2 py-1 text-xs text-black hover:bg-[#00D9C2]">
+                <button className="rounded bg-[#72FFA4] px-2 py-1 text-xs text-black [@media(hover:hover)]:hover:bg-[#00D9C2]">
                   I&apos;d find it here
                 </button>
               ) : (
