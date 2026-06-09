@@ -232,10 +232,11 @@ export function TreePreview({
                     <span className="relative min-w-0 flex-1 text-left">
                       <span
                         className={cn(
-                          "block truncate text-gray-900",
-                          node.isExpanded || nodeLink === selectedLink
-                            ? "[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
-                            : "group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
+                          // Mobile: button is always visible, so always fade.
+                          // Desktop (sm+): fade only while the button is revealed.
+                          "block truncate text-gray-900 [mask-image:linear-gradient(to_right,black_70%,transparent_100%)]",
+                          !(node.isExpanded || nodeLink === selectedLink) &&
+                            "sm:[mask-image:none] sm:group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] sm:group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
                         )}
                       >
                         {node.name}
@@ -244,10 +245,9 @@ export function TreePreview({
                   </button>
                   <div
                     className={cn(
-                      "shrink-0 transition-opacity duration-150",
-                      node.isExpanded || nodeLink === selectedLink
-                        ? "opacity-100"
-                        : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                      "shrink-0 opacity-100 transition-opacity duration-150",
+                      !(node.isExpanded || nodeLink === selectedLink) &&
+                        "sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                     )}
                   >
                     <Button
