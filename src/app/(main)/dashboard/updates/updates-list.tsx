@@ -390,7 +390,7 @@ const updates: Update[] = [
   },
   {
     id: "29",
-    date: "2026-06-08",
+    date: "2026-06-10",
     title: "Allow Non-Leaf Nodes as Answers",
     description: "You can now set parent (non-leaf) nodes as correct answers for tree test tasks.",
     type: "feature",
