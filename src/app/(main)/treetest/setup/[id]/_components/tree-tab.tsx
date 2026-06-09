@@ -200,7 +200,13 @@ export function TreeTab({ data, onChange }: TreeTabProps) {
       {data.tree.parsed.length > 0 && (
         <div className="space-y-2">
           <Label>Interactive Tree Preview</Label>
-          <TreePreview nodes={data.tree.parsed} />
+          <TreePreview
+            nodes={data.tree.parsed}
+            allowNonLeafAnswers={data.tasks.allowNonLeafAnswers ?? false}
+            onAllowNonLeafAnswersChange={(checked) =>
+              onChange({ ...data, tasks: { ...data.tasks, allowNonLeafAnswers: checked } })
+            }
+          />
           <div className="flex justify-end">
             <TooltipProvider delayDuration={100}>
               <Tooltip>

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CopyTasksDialog } from "./copy-tasks-dialog";
 import { SETUP_TOUR_STEP_IDS } from "@/lib/constants";
@@ -34,6 +34,12 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
   const [validationResults, setValidationResults] = useState<
     Record<number, { valid: string[]; invalid: string[]; missing: boolean } | null>
   >({});
+
+  // Toggling allowNonLeafAnswers (here or from the tree tab's preview) changes which
+  // paths are valid, so stale validation badges would mislead
+  useEffect(() => {
+    setValidationResults({});
+  }, [data.tasks.allowNonLeafAnswers]);
 
   // Recursive function to get all available paths from the tree.
   // Uses sanitizeTreeTestLink (same as tree-tab.tsx) so paths are byte-identical
@@ -174,11 +180,9 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
         <Switch
           id="allow-non-leaf-answers"
           checked={data.tasks.allowNonLeafAnswers ?? false}
-          onCheckedChange={(checked) => {
-            onChange({ ...data, tasks: { ...data.tasks, allowNonLeafAnswers: checked } });
-            // Toggling changes which paths are valid, so stale results would mislead
-            setValidationResults({});
-          }}
+          onCheckedChange={(checked) =>
+            onChange({ ...data, tasks: { ...data.tasks, allowNonLeafAnswers: checked } })
+          }
         />
         <div className="flex flex-col gap-0.5">
           <Label htmlFor="allow-non-leaf-answers" className="cursor-pointer">

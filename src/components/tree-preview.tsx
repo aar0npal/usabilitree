@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { TreeNode } from "@/lib/types/tree-test";
-import { cn } from "@/lib/utils";
+import { cn, sanitizeTreeTestLink } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface TreeNodeWithExpanded extends TreeNode {
@@ -14,9 +14,17 @@ interface TreeNodeWithExpanded extends TreeNode {
 interface TreePreviewProps {
   nodes: TreeNode[];
   className?: string;
+  /** Bound to the study's "Allow non-leaf nodes as answers" setting (tasks tab) */
+  allowNonLeafAnswers?: boolean;
+  onAllowNonLeafAnswersChange?: (checked: boolean) => void;
 }
 
-export function TreePreview({ nodes, className }: TreePreviewProps) {
+export function TreePreview({
+  nodes,
+  className,
+  allowNonLeafAnswers = false,
+  onAllowNonLeafAnswersChange,
+}: TreePreviewProps) {
   const [showParticipantView, setShowParticipantView] = useState(false);
   const [selectedLink, setSelectedLink] = useState<string>();
   // Initialize all nodes as expanded
@@ -185,6 +193,10 @@ export function TreePreview({ nodes, className }: TreePreviewProps) {
     }
   };
 
+  const handleSelectNonLeaf = (currentPath: TreeNodeWithExpanded[]) => {
+    setSelectedLink("/" + currentPath.map((n) => sanitizeTreeTestLink(n.name)).join("/"));
+  };
+
   const renderNodes = (
     nodes: TreeNodeWithExpanded[],
     parentPath: TreeNodeWithExpanded[] = [],
@@ -194,26 +206,98 @@ export function TreePreview({ nodes, className }: TreePreviewProps) {
       const currentPath = [...parentPath, node];
       const hasChildren = node.children && node.children.length > 0;
 
+      const nodeLink = "/" + currentPath.map((n) => sanitizeTreeTestLink(n.name)).join("/");
+      const showNonLeafSelect = showParticipantView && allowNonLeafAnswers;
+
       return (
         <div key={`${node.name}-${level}-${index}`} className={level > 0 ? "ml-4" : ""}>
           {hasChildren ? (
             <div className="mb-2">
-              <button
-                onClick={() => toggleExpand(node, currentPath)}
-                className={`flex w-full items-center justify-between rounded px-3 py-2 text-sm transition-colors duration-200 ${
-                  showParticipantView
-                    ? "bg-gray-200 hover:bg-gray-300"
-                    : "bg-gray-100 hover:bg-gray-200"
-                }`}
-                aria-expanded={node.isExpanded}
-              >
-                <span className="text-left text-gray-900">{node.name}</span>
-                {node.isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-gray-600" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-gray-600" />
-                )}
-              </button>
+              {showNonLeafSelect ? (
+                // Mirrors the participant UI (tree-test.tsx): label toggle, then "Select"
+                // revealed on hover/focus or when expanded, then chevron flush right
+                <div
+                  className={cn(
+                    "group flex w-full items-center rounded transition-colors duration-200",
+                    nodeLink === selectedLink
+                      ? "border border-green-700 bg-[#e6f3d8]"
+                      : "bg-gray-200 hover:bg-gray-300"
+                  )}
+                >
+                  <button
+                    onClick={() => toggleExpand(node, currentPath)}
+                    className="flex min-w-0 flex-1 items-center px-3 py-2 text-sm"
+                    aria-expanded={node.isExpanded}
+                  >
+                    <span className="relative min-w-0 flex-1 text-left">
+                      <span
+                        className={cn(
+                          "block truncate text-gray-900",
+                          node.isExpanded || nodeLink === selectedLink
+                            ? "[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
+                            : "group-hover:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)] group-focus-within:[mask-image:linear-gradient(to_right,black_70%,transparent_100%)]"
+                        )}
+                      >
+                        {node.name}
+                      </span>
+                    </span>
+                  </button>
+                  <div
+                    className={cn(
+                      "shrink-0 transition-opacity duration-150",
+                      node.isExpanded || nodeLink === selectedLink
+                        ? "opacity-100"
+                        : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                    )}
+                  >
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className={cn(
+                        "text-xs",
+                        nodeLink === selectedLink
+                          ? "bg-[#72FFA4] text-black hover:bg-[#00D9C2]"
+                          : "bg-gray-300 hover:bg-[#72FFA4] hover:text-black"
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectNonLeaf(currentPath);
+                      }}
+                    >
+                      Select
+                    </Button>
+                  </div>
+                  <button
+                    onClick={() => toggleExpand(node, currentPath)}
+                    className="shrink-0 py-2 pl-2 pr-3"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  >
+                    {node.isExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-gray-600" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-600" />
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => toggleExpand(node, currentPath)}
+                  className={`flex w-full items-center justify-between rounded px-3 py-2 text-sm transition-colors duration-200 ${
+                    showParticipantView
+                      ? "bg-gray-200 hover:bg-gray-300"
+                      : "bg-gray-100 hover:bg-gray-200"
+                  }`}
+                  aria-expanded={node.isExpanded}
+                >
+                  <span className="text-left text-gray-900">{node.name}</span>
+                  {node.isExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-gray-600" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-gray-600" />
+                  )}
+                </button>
+              )}
               <div
                 className={cn(
                   "grid transition-all duration-300 ease-in-out",
@@ -266,7 +350,7 @@ export function TreePreview({ nodes, className }: TreePreviewProps) {
 
   return (
     <div className={cn("space-y-4 rounded-lg border bg-white p-4", className)}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={expandAll} className="text-xs">
             Expand All
@@ -275,7 +359,18 @@ export function TreePreview({ nodes, className }: TreePreviewProps) {
             Collapse All
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {onAllowNonLeafAnswersChange && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={allowNonLeafAnswers}
+                onChange={(e) => onAllowNonLeafAnswersChange(e.target.checked)}
+                className="rounded"
+              />
+              Allow non-leaf nodes as answers
+            </label>
+          )}
           <label className="flex items-center gap-2 text-xs text-muted-foreground">
             <input
               type="checkbox"

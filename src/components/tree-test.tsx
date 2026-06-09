@@ -173,7 +173,7 @@ const Navigation = ({
                   {/* Toggle button — expands/collapses; takes all remaining space */}
                   <button
                     onClick={() => toggleExpand(currentPath)}
-                    className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-sm"
+                    className="flex min-w-0 flex-1 items-center px-3 py-2 text-sm"
                     aria-expanded={item.isExpanded}
                   >
                     {/* Label with gradient fade before the reveal button */}
@@ -190,18 +190,14 @@ const Navigation = ({
                         {item.name}
                       </span>
                     </span>
-                    {item.isExpanded ? (
-                      <ChevronDown className="h-4 w-4 shrink-0" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 shrink-0" />
-                    )}
                   </button>
 
-                  {/* "Select as answer" button — revealed on hover/focus (desktop) and when
-                      expanded or already selected (touch, since there's no hover). */}
+                  {/* "Select as answer" button — sits before the chevron so the chevron stays
+                      flush right like every other row. Revealed on hover/focus (desktop) and
+                      when expanded or already selected (touch, since there's no hover). */}
                   <div
                     className={cn(
-                      "shrink-0 pr-1 transition-opacity duration-150",
+                      "shrink-0 transition-opacity duration-150",
                       item.isExpanded || nodeLink === selectedLink
                         ? "opacity-100"
                         : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
@@ -224,6 +220,21 @@ const Navigation = ({
                       {customText.selectAsAnswer}
                     </Button>
                   </div>
+
+                  {/* Chevron toggle — duplicate convenience target; the label button is the
+                      accessible one, so hide this from keyboard and screen readers */}
+                  <button
+                    onClick={() => toggleExpand(currentPath)}
+                    className="shrink-0 py-2 pl-2 pr-3"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  >
+                    {item.isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               ) : (
                 // Default: single expand/collapse button, no answer selection
