@@ -57,6 +57,13 @@
       "when": 1780952653907,
       "tag": "0007_happy_cammi",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784055575439,
+      "tag": "0008_peaceful_apocalypse",
+      "breakpoints": true
     }
   ]
 }

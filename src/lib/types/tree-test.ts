@@ -24,6 +24,7 @@ export interface StudyFormData {
     instructions: string;
     startTest: string;
     findItHere: string;
+    selectAsAnswer: string;
     startTask: string;
     confidenceQuestion: string;
     stronglyAgree: string;
@@ -69,6 +70,7 @@ export interface TreeTestConfig {
     instructions: string;
     startTest: string;
     findItHere: string;
+    selectAsAnswer: string;
     startTask: string;
     confidenceQuestion: string;
     stronglyAgree: string;

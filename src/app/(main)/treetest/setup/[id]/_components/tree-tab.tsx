@@ -203,6 +203,7 @@ export function TreeTab({ data, onChange }: TreeTabProps) {
           <TreePreview
             nodes={data.tree.parsed}
             allowNonLeafAnswers={data.tasks.allowNonLeafAnswers ?? false}
+            selectAsAnswerText={data.customText.selectAsAnswer}
             onAllowNonLeafAnswersChange={(checked) =>
               onChange({ ...data, tasks: { ...data.tasks, allowNonLeafAnswers: checked } })
             }

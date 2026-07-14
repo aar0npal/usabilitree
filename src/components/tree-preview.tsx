@@ -17,6 +17,8 @@ interface TreePreviewProps {
   /** Bound to the study's "Allow non-leaf nodes as answers" setting (tasks tab) */
   allowNonLeafAnswers?: boolean;
   onAllowNonLeafAnswersChange?: (checked: boolean) => void;
+  /** Custom label for the non-leaf "Select" button (messages tab) */
+  selectAsAnswerText?: string;
 }
 
 export function TreePreview({
@@ -24,6 +26,7 @@ export function TreePreview({
   className,
   allowNonLeafAnswers = false,
   onAllowNonLeafAnswersChange,
+  selectAsAnswerText,
 }: TreePreviewProps) {
   const [showParticipantView, setShowParticipantView] = useState(false);
   const [selectedLink, setSelectedLink] = useState<string>();
@@ -264,7 +267,7 @@ export function TreePreview({
                         handleSelectNonLeaf(currentPath);
                       }}
                     >
-                      Select
+                      {selectAsAnswerText || "Select"}
                     </Button>
                   </div>
                   <button

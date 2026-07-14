@@ -55,6 +55,7 @@ export async function createStudy(type: "tree_test" | "card_sort") {
           instructionsText: defaultCustomText.instructions,
           startTestText: defaultCustomText.startTest,
           findItHereText: defaultCustomText.findItHere,
+          selectAsAnswerText: defaultCustomText.selectAsAnswer,
           startTaskText: defaultCustomText.startTask,
           confidenceQuestionText: defaultCustomText.confidenceQuestion,
           stronglyAgreeText: defaultCustomText.stronglyAgree,
@@ -162,6 +163,7 @@ export async function saveStudyData(id: string, data: StudyFormData) {
             instructionsText: data.customText.instructions,
             startTestText: data.customText.startTest,
             findItHereText: data.customText.findItHere,
+            selectAsAnswerText: data.customText.selectAsAnswer,
             startTaskText: data.customText.startTask,
             confidenceQuestionText: data.customText.confidenceQuestion,
             stronglyAgreeText: data.customText.stronglyAgree,
@@ -187,6 +189,7 @@ export async function saveStudyData(id: string, data: StudyFormData) {
           instructionsText: data.customText.instructions,
           startTestText: data.customText.startTest,
           findItHereText: data.customText.findItHere,
+          selectAsAnswerText: data.customText.selectAsAnswer,
           startTaskText: data.customText.startTask,
           confidenceQuestionText: data.customText.confidenceQuestion,
           stronglyAgreeText: data.customText.stronglyAgree,
@@ -342,6 +345,7 @@ export async function loadStudyData(id: string) {
         instructions: config?.instructionsText || defaultCustomText.instructions,
         startTest: config?.startTestText || defaultCustomText.startTest,
         findItHere: config?.findItHereText || defaultCustomText.findItHere,
+        selectAsAnswer: config?.selectAsAnswerText || defaultCustomText.selectAsAnswer,
         startTask: ensureRequiredPlaceholders(
           config?.startTaskText || defaultCustomText.startTask,
           "startTask"
@@ -505,6 +509,7 @@ export async function loadTestConfig(id: string, preview: boolean = false, parti
         instructionsText: treeConfigs.instructionsText,
         startTestText: treeConfigs.startTestText,
         findItHereText: treeConfigs.findItHereText,
+        selectAsAnswerText: treeConfigs.selectAsAnswerText,
         startTaskText: treeConfigs.startTaskText,
         confidenceQuestionText: treeConfigs.confidenceQuestionText,
         stronglyAgreeText: treeConfigs.stronglyAgreeText,
@@ -572,6 +577,7 @@ export async function loadTestConfig(id: string, preview: boolean = false, parti
         instructions: config.instructionsText || defaultCustomText.instructions,
         startTest: config.startTestText || defaultCustomText.startTest,
         findItHere: config.findItHereText || defaultCustomText.findItHere,
+        selectAsAnswer: config.selectAsAnswerText || defaultCustomText.selectAsAnswer,
         startTask: ensureRequiredPlaceholders(
           config.startTaskText || defaultCustomText.startTask,
           "startTask"

@@ -512,7 +512,7 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
                 allowNonLeafAnswers={config.allowNonLeafAnswers}
                 customText={{
                   findItHere: config.customText.findItHere,
-                  selectAsAnswer: "Select",
+                  selectAsAnswer: config.customText.selectAsAnswer,
                 }}
               />
             )}

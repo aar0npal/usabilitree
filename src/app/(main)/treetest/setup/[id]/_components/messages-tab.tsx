@@ -394,6 +394,26 @@ export function MessagesTab({ data, onChange }: MessagesTabProps) {
                   placeholder="Text for the 'I'd find it here' button"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="selectAsAnswer">
+                  Select Button
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    Shown on parent nodes when non-leaf answers are allowed
+                  </span>
+                </Label>
+                <Input
+                  id="selectAsAnswer"
+                  value={data.customText.selectAsAnswer}
+                  onChange={(e) =>
+                    onChange({
+                      ...data,
+                      customText: { ...data.customText, selectAsAnswer: e.target.value },
+                    })
+                  }
+                  placeholder="Text for the 'Select' button on parent nodes"
+                />
+              </div>
             </div>
           </div>
 

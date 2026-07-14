@@ -9,6 +9,7 @@ export interface TreeTestTranslation {
     instructions: string;
     startTest: string;
     findItHere: string;
+    selectAsAnswer: string;
     startTask: string;
     confidenceQuestion: string;
     stronglyAgree: string;
@@ -54,6 +55,7 @@ _This is not a test of your ability, there are no right or wrong answers._
 **That's it, let's get started!**`,
       startTest: "Start Test",
       findItHere: "I'd find it here",
+      selectAsAnswer: "Select",
       startTask: "Start Task {0}",
       confidenceQuestion: "How confident are you with your answer?",
       stronglyAgree: "Strongly Agree",
@@ -101,6 +103,7 @@ _Esto no es una prueba de su capacidad, no hay respuestas correctas o incorrecta
 **¡Eso es todo, comencemos!**`,
       startTest: "Comenzar Prueba",
       findItHere: "Lo encontraría aquí",
+      selectAsAnswer: "Seleccionar",
       startTask: "Comenzar Tarea {0}",
       confidenceQuestion: "¿Qué tan seguro está de su respuesta?",
       stronglyAgree: "Muy de Acuerdo",
@@ -148,6 +151,7 @@ _Ce n'est pas un test de vos capacités, il n'y a pas de bonnes ou de mauvaises 
 **C'est tout, commençons !**`,
       startTest: "Commencer le Test",
       findItHere: "Je le trouverais ici",
+      selectAsAnswer: "Sélectionner",
       startTask: "Commencer la Tâche {0}",
       confidenceQuestion: "À quel point êtes-vous confiant dans votre réponse ?",
       stronglyAgree: "Tout à fait d'Accord",
@@ -195,6 +199,7 @@ _Dies ist kein Test Ihrer Fähigkeiten, es gibt keine richtigen oder falschen An
 **Das ist alles, lassen Sie uns anfangen!**`,
       startTest: "Test Starten",
       findItHere: "Ich würde es hier finden",
+      selectAsAnswer: "Auswählen",
       startTask: "Aufgabe {0} Starten",
       confidenceQuestion: "Wie sicher sind Sie bei Ihrer Antwort?",
       stronglyAgree: "Stimme Voll Zu",
@@ -242,6 +247,7 @@ _Isto não é um teste da sua habilidade, não há respostas certas ou erradas._
 **Isso é tudo, vamos começar!**`,
       startTest: "Iniciar Teste",
       findItHere: "Eu encontraria aqui",
+      selectAsAnswer: "Selecionar",
       startTask: "Iniciar Tarefa {0}",
       confidenceQuestion: "Quão confiante você está na sua resposta?",
       stronglyAgree: "Concordo Totalmente",
@@ -298,6 +304,7 @@ _Di nuovo: non si tratta di un test delle Sue capacità, ma di un test sul nostr
 ![](instruction-img)`,
       startTest: "Cominciamo",
       findItHere: "Penso che sia qui",
+      selectAsAnswer: "Seleziona",
       startTask: "Andiamo alla domanda {0}",
       confidenceQuestion: "Quanto è sicuro/a della Sua risposta?",
       stronglyAgree: "Completamente sicuro/a",

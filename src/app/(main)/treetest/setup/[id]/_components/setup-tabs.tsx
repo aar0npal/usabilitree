@@ -78,6 +78,7 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
       instructions: "",
       startTest: "",
       findItHere: "",
+      selectAsAnswer: "",
       startTask: "",
       confidenceQuestion: "",
       stronglyAgree: "",

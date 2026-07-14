@@ -128,6 +128,7 @@ export const treeConfigs = sqliteTable("tree_configs", {
   instructionsText: text("instructions_text"),
   startTestText: text("start_test_text"),
   findItHereText: text("find_it_here_text"),
+  selectAsAnswerText: text("select_as_answer_text"),
   startTaskText: text("start_task_text"),
   confidenceQuestionText: text("confidence_question_text"),
   stronglyAgreeText: text("strongly_agree_text"),

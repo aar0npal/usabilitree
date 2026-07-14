@@ -1,0 +1,1 @@
+ALTER TABLE `tree_configs` ADD `select_as_answer_text` text;
