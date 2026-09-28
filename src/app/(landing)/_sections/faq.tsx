@@ -76,7 +76,7 @@ export default function FAQ() {
           As a sole developer maintaining this
           <Button asChild variant="linkHover1" className="ml-1 h-0 p-0 after:-bottom-2 after:w-32">
             <Link
-              href="https://github.com/ubergonmx/usabilitree"
+              href="https://github.com/aar0npal/usabilitree"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -132,7 +132,7 @@ export default function FAQ() {
           Please report the bug on{" "}
           <Button asChild variant="linkHover1" className="h-0 p-0 after:-bottom-2 after:w-12">
             <a
-              href="https://github.com/ubergonmx/usabilitree/issues/new"
+              href="https://github.com/aar0npal/usabilitree/issues/new"
               target="_blank"
               rel="noreferrer noopener"
             >
