@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { CodeIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 
-const githubAccountUrl = "https://github.com/ubergonmx";
+const githubAccountUrl = "https://github.com/aar0npal";
 
 export function Footer() {
   return (

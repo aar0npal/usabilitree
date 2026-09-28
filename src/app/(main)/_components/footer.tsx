@@ -3,7 +3,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-const githubUrl = "https://github.com/ubergonmx";
+const githubUrl = "https://github.com/aar0npal";
 
 export const Footer = () => {
   return (

@@ -36,8 +36,8 @@ UsabiliTree is a comprehensive tree testing platform that helps UX researchers a
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/ubergonmx/usabilitree-next.git
-cd usabilitree-next
+git clone https://github.com/aar0npal/usabilitree.git
+cd usabilitree
 ```
 
 2. Install dependencies:
@@ -197,12 +197,12 @@ This project is licensed under the [GNU Affero General Public License v3.0](LICE
 
 ## 👨‍💻 Author
 
-Built by [aaronpal](https://github.com/ubergonmx)
+Built by [aaronpal](https://github.com/aar0npal)
 
 ## 📞 Support
 
 - **Discord**: [Contact on Discord](https://discord.com/users/263841596213035009)
-- **Issues**: [GitHub Issues](https://github.com/ubergonmx/usabilitree-next/issues)
+- **Issues**: [GitHub Issues](https://github.com/aar0npal/usabilitree/issues)
 
 ---
 
