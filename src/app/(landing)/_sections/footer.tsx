@@ -12,8 +12,8 @@ export function Footer() {
         <CodeIcon className="mr-2 h-6 w-6" />
         <p className="text-sm">
           Built by{" "}
-          <Button variant="linkHover1" className="p-0 after:w-[60px]">
-            <a href={githubAccountUrl} target="_blank">
+          <Button asChild variant="linkHover1" className="p-0 after:w-[60px]">
+            <a href={githubAccountUrl} target="_blank" rel="noopener noreferrer">
               aaronpal
             </a>
           </Button>
