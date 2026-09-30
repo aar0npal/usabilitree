@@ -28,7 +28,7 @@ UsabiliTree is a comprehensive tree testing platform that helps UX researchers a
 
 ### Prerequisites
 
-- Node.js 18+ and npm/yarn/pnpm
+- Node.js 18+ and npm (this repository uses `package-lock.json`)
 - A database (SQLite/Turso for development)
 
 ### Installation
@@ -43,7 +43,7 @@ cd usabilitree
 2. Install dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
 3. Set up environment variables:
@@ -121,11 +121,17 @@ npm run db:studio
 # Format code
 npm run format
 
+# Check formatting
+npm run format:check
+
 # Type checking
 npm run types
 
 # Lint
 npm run lint
+
+# Run tests
+npm test
 
 # Build for production
 npm run build
@@ -190,6 +196,15 @@ Copy `.env.example` to `.env.local` and configure the following variables:
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+Before submitting a Pull Request, run the same checks as CI:
+
+```bash
+npm run types
+npm run format:check
+npm run lint
+npm test
+```
 
 ## 📄 License
 
