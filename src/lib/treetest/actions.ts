@@ -10,6 +10,7 @@ import { StudyFormData, TreeNode } from "@/lib/types/tree-test";
 import { getDefaultLanguage } from "@/lib/languages";
 import { canCreateStudy } from "@/lib/billing/study-limit";
 import { ForbiddenError } from "@/lib/treetest/forbidden-error";
+import { requireStudyAccess } from "@/lib/treetest/study-access";
 
 const defaultLanguage = getDefaultLanguage();
 const defaultWelcomeMessage = defaultLanguage.messages.welcome;
@@ -658,6 +659,8 @@ export async function updateParticipantCompletion(
 }
 
 export async function getStudyDetails(studyId: string): Promise<{ title: string; status: string }> {
+  await requireStudyAccess(studyId);
+
   try {
     const study = await db
       .select({
@@ -732,6 +735,8 @@ export async function getExistingStudies(currentStudyId: string) {
 }
 
 export async function getStudyTasks(studyId: string) {
+  await requireStudyAccess(studyId, "owner");
+
   try {
     const tasks = await db
       .select({
