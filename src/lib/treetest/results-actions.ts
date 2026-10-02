@@ -8,11 +8,16 @@ import {
   treeTaskResults,
   treeTasks,
 } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import * as z from "zod";
 import { Item, ParentClickStats, TreeTestOverviewStats } from "../types/tree-test";
 import { sanitizeTreeTestLink } from "../utils";
+import { ForbiddenError } from "./forbidden-error";
+import { requireStudyAccess } from "./study-access";
 
 export async function getStudyOverviewStats(studyId: string): Promise<TreeTestOverviewStats> {
+  await requireStudyAccess(studyId);
+
   try {
     // Get participant counts
     const [participantCounts] = await db
@@ -88,6 +93,8 @@ export interface Collaborator {
 }
 
 export async function getStudyCollaborators(studyId: string): Promise<Collaborator[]> {
+  await requireStudyAccess(studyId);
+
   try {
     const collaborators = await db
       .select()
@@ -106,10 +113,15 @@ export async function getStudyCollaborators(studyId: string): Promise<Collaborat
 }
 
 export async function addStudyCollaborator(studyId: string, email: string) {
+  await requireStudyAccess(studyId, "owner");
+
+  const parsedEmail = z.string().trim().email().max(255).safeParse(email);
+  if (!parsedEmail.success) throw new Error("Invalid email");
+
   try {
     await db.insert(studyCollaborators).values({
       studyId,
-      email,
+      email: parsedEmail.data,
     });
     return { success: true };
   } catch (error) {
@@ -118,11 +130,19 @@ export async function addStudyCollaborator(studyId: string, email: string) {
   }
 }
 
-export async function removeStudyCollaborator(collaboratorId: number) {
+export async function removeStudyCollaborator(studyId: string, collaboratorId: number) {
+  await requireStudyAccess(studyId, "owner");
+
   try {
-    await db.delete(studyCollaborators).where(eq(studyCollaborators.id, collaboratorId));
+    const result = await db
+      .delete(studyCollaborators)
+      .where(
+        and(eq(studyCollaborators.id, collaboratorId), eq(studyCollaborators.studyId, studyId))
+      );
+    if (result.rowsAffected === 0) throw new ForbiddenError();
     return { success: true };
   } catch (error) {
+    if (error instanceof ForbiddenError) throw error;
     console.error("Failed to remove collaborator:", error);
     throw new Error("Failed to remove collaborator");
   }
@@ -232,6 +252,8 @@ const computeStatistics = (
 
 // OPTIMIZED VERSION - Significantly reduces database reads by fetching all data in bulk
 export async function getTasksStats(studyId: string): Promise<TaskStats[]> {
+  await requireStudyAccess(studyId);
+
   try {
     // Step 1: Get all tasks and tree config in a single query
     const tasks = await db
@@ -607,6 +629,8 @@ export interface Participant {
 }
 
 export async function getParticipants(studyId: string): Promise<Participant[]> {
+  await requireStudyAccess(studyId);
+
   try {
     const studyParticipants = await db
       .select({
@@ -676,19 +700,42 @@ export async function getParticipants(studyId: string): Promise<Participant[]> {
   }
 }
 
-export async function deleteTaskResult(taskId: string): Promise<void> {
+export async function deleteTaskResult(studyId: string, resultId: string): Promise<void> {
+  await requireStudyAccess(studyId, "owner");
+
   try {
-    await db.delete(treeTaskResults).where(eq(treeTaskResults.id, taskId));
+    const result = await db
+      .delete(treeTaskResults)
+      .where(
+        and(
+          eq(treeTaskResults.id, resultId),
+          inArray(
+            treeTaskResults.participantId,
+            db
+              .select({ id: participants.id })
+              .from(participants)
+              .where(eq(participants.studyId, studyId))
+          )
+        )
+      );
+    if (result.rowsAffected === 0) throw new ForbiddenError();
   } catch (error) {
+    if (error instanceof ForbiddenError) throw error;
     console.error("Failed to delete task result:", error);
     throw new Error("Failed to delete task result");
   }
 }
 
-export async function deleteParticipant(participantId: string): Promise<void> {
+export async function deleteParticipant(studyId: string, participantId: string): Promise<void> {
+  await requireStudyAccess(studyId, "owner");
+
   try {
-    await db.delete(participants).where(eq(participants.id, participantId));
+    const result = await db
+      .delete(participants)
+      .where(and(eq(participants.id, participantId), eq(participants.studyId, studyId)));
+    if (result.rowsAffected === 0) throw new ForbiddenError();
   } catch (error) {
+    if (error instanceof ForbiddenError) throw error;
     console.error("Failed to delete participant:", error);
     throw new Error("Failed to delete participant");
   }

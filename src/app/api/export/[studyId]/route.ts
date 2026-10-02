@@ -4,6 +4,7 @@ import { participants, studies, treeTaskResults, treeTasks } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getStudyRole } from "@/lib/treetest/study-access";
 import { createRouteLogger } from "@/lib/posthog/server-logs";
 
 const confidenceLevels = [
@@ -99,6 +100,14 @@ export async function GET(request: NextRequest, { params }: { params: { studyId:
     routeLogger.setUser({ id: user.id, email: user.email });
 
     const studyId = params.studyId;
+
+    // Same rule as the results page: owners and collaborators can export
+    if (!(await getStudyRole(studyId, user))) {
+      routeLogger.warn("Study export requested without access", {
+        study_id: studyId,
+      });
+      return NextResponse.json({ error: "Study not found" }, { status: 404 });
+    }
 
     // Get study information
     const [study] = await db

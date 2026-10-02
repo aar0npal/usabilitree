@@ -68,7 +68,7 @@ export function ParticipantsTab({ studyId, isOwner }: ParticipantsTabProps) {
 
   const handleDeleteParticipant = async (participantId: string) => {
     try {
-      await deleteParticipant(participantId);
+      await deleteParticipant(studyId, participantId);
       const updatedParticipants = await getParticipants(studyId);
       setParticipants(updatedParticipants);
       toast.success("Participant deleted successfully");
@@ -79,7 +79,7 @@ export function ParticipantsTab({ studyId, isOwner }: ParticipantsTabProps) {
   };
   const handleDeleteResult = async (taskId: string, participantId: string) => {
     try {
-      await deleteTaskResult(taskId);
+      await deleteTaskResult(studyId, taskId);
       const updatedParticipants = await getParticipants(studyId);
       setParticipants(updatedParticipants);
       // Update selected participant if it's the one being viewed

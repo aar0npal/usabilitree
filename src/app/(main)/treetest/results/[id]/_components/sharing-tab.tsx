@@ -81,7 +81,7 @@ export function SharingTab({ studyId, userEmail, isOwner }: SharingTabProps) {
 
   const handleRemove = async (collaborator: Collaborator) => {
     try {
-      await removeStudyCollaborator(collaborator.id);
+      await removeStudyCollaborator(studyId, collaborator.id);
       await loadCollaborators();
       toast.success("Collaborator removed successfully");
     } catch (error) {
