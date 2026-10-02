@@ -26,7 +26,6 @@ import { useRouter } from "next/navigation";
 import { PieChart } from "@/components/ui/pie-chart";
 import { BoxPlot } from "@/components/ui/box-plot";
 import { Button } from "@/components/ui/button";
-import { Item } from "@/lib/types/tree-test";
 import { Input } from "@/components/ui/input";
 import * as Sentry from "@sentry/react";
 import { RESULTS_TOUR_STEP_IDS } from "@/lib/constants";
@@ -262,64 +261,24 @@ type Destination = ParticipantDestination | ConfiguredPath;
 
 function IncorrectDestinationsTable({
   destinations,
-  parsedTree,
 }: {
-  destinations: { path: string; count: number }[];
-  parsedTree: string;
+  destinations: TaskStats["stats"]["incorrectDestinations"];
 }) {
   const [showParticipantPaths, setShowParticipantPaths] = useState(false);
-  const tree = JSON.parse(parsedTree) as Item[];
 
   if (destinations.length === 0) {
     return null;
   }
 
-  const validLinks: string[] = [];
-
-  function collectLinks(nodes: Item[]) {
-    nodes.forEach((node) => {
-      if (node.link) {
-        validLinks.push(node.link);
-      }
-      if (node.children?.length) {
-        collectLinks(node.children);
-      }
-    });
-  }
-  collectLinks(tree);
-
-  // Sort by length descending so longest (most specific) match wins
-  const sortedLinks = [...validLinks].sort((a, b) => b.length - a.length);
-
-  function findConfiguredPath(path: string): string | undefined {
-    // Suffix match: find the valid link that matches the end of the path
-    for (const link of sortedLinks) {
-      if (path.endsWith(link)) {
-        return link;
-      }
-    }
-    // Handle truncated paths (parent/child same name): try repeating last segment
-    const lastSeg = path.split("/").filter(Boolean).pop();
-    if (lastSeg) {
-      const withRepeated = `${path}/${lastSeg}`;
-      for (const link of sortedLinks) {
-        if (withRepeated.endsWith(link)) {
-          return link;
-        }
-      }
-    }
-    // Fallback: last segment match
-    const finalSegment = path.split("/").pop()!;
-    return validLinks.find((link) => link.endsWith(`/${finalSegment}`));
-  }
-
   const totalParticipants = destinations.reduce((sum, d) => sum + d.count, 0);
 
+  // Configured view groups by the leaf each participant chose (resolved on the server);
+  // participant view groups by the raw path taken
   const destinationsToShow: Destination[] = !showParticipantPaths
     ? Array.from(
         destinations
           .reduce((acc, dest) => {
-            const configuredPath = findConfiguredPath(dest.path);
+            const configuredPath = dest.configuredPath;
 
             if (configuredPath) {
               if (!acc.has(configuredPath)) {
@@ -343,10 +302,17 @@ function IncorrectDestinationsTable({
           percentage: Math.round((dest.count / totalParticipants) * 100),
         }))
         .sort((a, b) => b.count - a.count)
-    : destinations.map((dest) => ({
-        path: dest.path,
-        count: dest.count,
-        percentage: Math.round((dest.count / totalParticipants) * 100),
+    : Array.from(
+        destinations
+          .reduce(
+            (acc, dest) => acc.set(dest.path, (acc.get(dest.path) ?? 0) + dest.count),
+            new Map<string, number>()
+          )
+          .entries()
+      ).map(([path, count]) => ({
+        path,
+        count,
+        percentage: Math.round((count / totalParticipants) * 100),
       }));
 
   return (
@@ -898,10 +864,7 @@ export function TasksTab({
                   <FirstClickedParentTable parentClicks={task.stats.parentClicks} />
                 </div>
                 <div className="border-t pt-4">
-                  <IncorrectDestinationsTable
-                    destinations={task.stats.incorrectDestinations}
-                    parsedTree={task.parsedTree}
-                  />
+                  <IncorrectDestinationsTable destinations={task.stats.incorrectDestinations} />
                 </div>
                 <div className="border-t pt-4">
                   <ConfidenceRatingsTable ratings={task.stats.confidenceRatings} />
