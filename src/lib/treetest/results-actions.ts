@@ -14,6 +14,7 @@ import { Item, ParentClickStats, TreeTestOverviewStats } from "../types/tree-tes
 import { sanitizeTreeTestLink } from "../utils";
 import { ForbiddenError } from "./forbidden-error";
 import { collectValidLinks, resultDestination, sortValidLinks } from "./selected-link";
+import { pathIncludes, pathStartsWith } from "./tree-path";
 import { requireStudyAccess } from "./study-access";
 
 export async function getStudyOverviewStats(studyId: string): Promise<TreeTestOverviewStats> {
@@ -430,10 +431,10 @@ export async function getTasksStats(studyId: string): Promise<TaskStats[]> {
             : possibleParentName;
 
           // Check if this path starts with this parent path (first click)
-          const isFirstClick = result.pathTaken.startsWith(parentPathForName);
+          const isFirstClick = pathStartsWith(result.pathTaken, parentPathForName);
 
           // Check if this path includes this parent name anywhere (total clicks)
-          const includesParentName = result.pathTaken.includes(possibleParentName);
+          const includesParentName = pathIncludes(result.pathTaken, possibleParentName);
 
           if (!parentClickStats.has(parentPathForName)) {
             parentClickStats.set(parentPathForName, {
