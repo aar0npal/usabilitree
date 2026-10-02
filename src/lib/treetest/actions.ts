@@ -5,12 +5,14 @@ import { participants, studies, treeConfigs, treeTaskResults, treeTasks } from "
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/session";
-import { desc, and, ne, eq, sql, count } from "drizzle-orm";
+import { desc, and, ne, eq, sql, count, inArray, isNull } from "drizzle-orm";
+import * as z from "zod";
 import { StudyFormData, TreeNode } from "@/lib/types/tree-test";
 import { getDefaultLanguage } from "@/lib/languages";
 import { canCreateStudy } from "@/lib/billing/study-limit";
 import { ForbiddenError } from "@/lib/treetest/forbidden-error";
 import { requireStudyAccess } from "@/lib/treetest/study-access";
+import { scoreSubmission } from "@/lib/treetest/scoring";
 
 const defaultLanguage = getDefaultLanguage();
 const defaultWelcomeMessage = defaultLanguage.messages.welcome;
@@ -521,9 +523,15 @@ export async function loadTestConfig(id: string, preview: boolean = false, parti
         completedMessageText: treeConfigs.completedMessageText,
         nextButtonText: treeConfigs.nextButtonText,
         confidenceDescriptionText: treeConfigs.confidenceDescriptionText,
+        status: studies.status,
       })
       .from(treeConfigs)
+      .innerJoin(studies, eq(studies.id, treeConfigs.studyId))
       .where(eq(treeConfigs.studyId, id));
+
+    if (!config) throw new Error("Test configuration not found");
+    // Preview works for any status; live sessions only while the study is running
+    if (!preview && config.status !== "active") throw new ForbiddenError();
 
     const tasks = await db
       .select({
@@ -534,8 +542,6 @@ export async function loadTestConfig(id: string, preview: boolean = false, parti
       .from(treeTasks)
       .where(eq(treeTasks.studyId, id))
       .orderBy(treeTasks.taskIndex);
-
-    if (!config) throw new Error("Test configuration not found");
 
     // check if participantId is already in the database
     let existingParticipantId;
@@ -604,35 +610,66 @@ export async function loadTestConfig(id: string, preview: boolean = false, parti
   }
 }
 
+const idSchema = z.string().min(1).max(64);
+
+// No outcome fields: the server scores answers, and drops any the browser still sends
+const taskResultSchema = z
+  .object({
+    completionTimeSeconds: z.number().finite().nonnegative(),
+    confidenceRating: z.number().int().min(1).max(7).optional(),
+    pathTaken: z.string().max(10_000),
+    selectedLink: z.string().min(1).max(10_000).nullish(),
+    skipped: z.boolean(),
+  })
+  .refine((result) => result.skipped || !!result.selectedLink, {
+    message: "selectedLink is required unless the task was skipped",
+  });
+
 export async function storeTreeTaskResult(
   participantId: string,
   taskId: string,
-  result: {
-    successful: boolean;
-    directPathTaken: boolean;
-    completionTimeSeconds: number;
-    confidenceRating?: number;
-    pathTaken: string;
-    selectedLink?: string | null;
-    skipped: boolean;
-  }
+  result: z.input<typeof taskResultSchema>
 ) {
+  const parsedIds = z.tuple([idSchema, idSchema]).safeParse([participantId, taskId]);
+  const parsedResult = taskResultSchema.safeParse(result);
+  if (!parsedIds.success || !parsedResult.success) throw new Error("Invalid task result");
+  const input = parsedResult.data;
+
   try {
+    // The task must belong to the participant's study, and that study must be running
+    const [target] = await db
+      .select({ expectedAnswer: treeTasks.expectedAnswer, status: studies.status })
+      .from(participants)
+      .innerJoin(studies, eq(studies.id, participants.studyId))
+      .innerJoin(
+        treeTasks,
+        and(eq(treeTasks.studyId, participants.studyId), eq(treeTasks.id, taskId))
+      )
+      .where(eq(participants.id, participantId));
+    if (!target || target.status !== "active") throw new ForbiddenError();
+
+    const selectedLink = input.skipped ? null : (input.selectedLink ?? null);
+    const outcome = scoreSubmission(target.expectedAnswer, {
+      pathTaken: input.pathTaken,
+      selectedLink,
+    });
+
     await db.insert(treeTaskResults).values({
       id: nanoid(),
       participantId,
       taskId,
-      successful: result.successful,
-      directPathTaken: result.directPathTaken,
-      completionTimeSeconds: result.completionTimeSeconds,
-      confidenceRating: result.confidenceRating,
-      pathTaken: result.pathTaken,
-      selectedLink: result.selectedLink ?? null,
-      skipped: result.skipped,
+      successful: outcome.successful,
+      directPathTaken: outcome.directPathTaken,
+      completionTimeSeconds: input.completionTimeSeconds,
+      confidenceRating: input.confidenceRating,
+      pathTaken: input.pathTaken,
+      selectedLink,
+      skipped: input.skipped,
     });
 
     return { success: true };
   } catch (error) {
+    if (error instanceof ForbiddenError) throw error;
     console.error("Failed to store tree task result:", error);
     throw new Error("Failed to store tree task result");
   }
@@ -642,17 +679,40 @@ export async function updateParticipantCompletion(
   participantId: string,
   activeTime: number | null
 ) {
+  const parsedId = idSchema.safeParse(participantId);
+  if (!parsedId.success) throw new Error("Invalid participant");
+  // A corrupt saved time shouldn't block completion; store it as unknown instead
+  const durationSeconds = z
+    .number()
+    .finite()
+    .nonnegative()
+    .nullable()
+    .catch(null)
+    .parse(activeTime);
+
   try {
-    await db
+    // Only the first completion counts, and only while the study is running
+    const result = await db
       .update(participants)
       .set({
         completedAt: new Date(),
-        durationSeconds: activeTime,
+        durationSeconds,
       })
-      .where(eq(participants.id, participantId));
+      .where(
+        and(
+          eq(participants.id, participantId),
+          isNull(participants.completedAt),
+          inArray(
+            participants.studyId,
+            db.select({ id: studies.id }).from(studies).where(eq(studies.status, "active"))
+          )
+        )
+      );
+    if (result.rowsAffected === 0) throw new ForbiddenError();
 
     return { success: true };
   } catch (error) {
+    if (error instanceof ForbiddenError) throw error;
     console.error("Failed to update participant completion time:", error);
     throw new Error("Failed to update participant completion time");
   }

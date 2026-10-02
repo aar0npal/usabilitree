@@ -365,13 +365,8 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
         const endTime = Date.now();
         const duration = (endTime - startTime!) / 1000;
 
-        // Check if the selected link matches any of the correct answers
-        const correctAnswers = config.tasks[currentTask].link.split(",").map((a) => a.trim());
-        const isSuccessful = correctAnswers.includes(selectedLink);
-
+        // Success and directness are scored on the server
         await storeTreeTaskResult(config.participantId, config.tasks[currentTask].id, {
-          successful: isSuccessful,
-          directPathTaken: selectedLink === pathTaken,
           completionTimeSeconds: duration,
           confidenceRating: confidenceLevel ? parseInt(confidenceLevel) : undefined,
           pathTaken: pathTaken,
@@ -416,9 +411,8 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
       //&& config.tree[0].name.toLowerCase().includes("home");
       const rootLink = isOnlyRootHome ? sanitizeTreeTestLink(config.tree[0].name) : "";
 
+      // An empty path (the user didn't touch the nav menu) is scored as a direct skip
       await storeTreeTaskResult(config.participantId, config.tasks[currentTask].id, {
-        successful: false,
-        directPathTaken: !pathTaken || pathTaken === `/${rootLink}`, // true if user didn't touch the nav menu = no path taken (direct skip)
         completionTimeSeconds: duration,
         pathTaken: pathTaken !== `/${rootLink}` ? pathTaken : "",
         selectedLink: null,
