@@ -13,6 +13,7 @@ import * as z from "zod";
 import { Item, ParentClickStats, TreeTestOverviewStats } from "../types/tree-test";
 import { sanitizeTreeTestLink } from "../utils";
 import { ForbiddenError } from "./forbidden-error";
+import { collectValidLinks, resultDestination, sortValidLinks } from "./selected-link";
 import { requireStudyAccess } from "./study-access";
 
 export async function getStudyOverviewStats(studyId: string): Promise<TreeTestOverviewStats> {
@@ -191,6 +192,8 @@ export interface TaskStats {
     }[];
     incorrectDestinations: {
       path: string;
+      /** Tree leaf the participant chose; null if it can't be matched to the current tree */
+      configuredPath: string | null;
       count: number;
       percentage: number;
     }[];
@@ -283,6 +286,7 @@ export async function getTasksStats(studyId: string): Promise<TaskStats[]> {
         completionTimeSeconds: treeTaskResults.completionTimeSeconds,
         confidenceRating: treeTaskResults.confidenceRating,
         pathTaken: treeTaskResults.pathTaken,
+        selectedLink: treeTaskResults.selectedLink,
         skipped: treeTaskResults.skipped,
         participantId: treeTaskResults.participantId,
       })
@@ -290,6 +294,9 @@ export async function getTasksStats(studyId: string): Promise<TaskStats[]> {
       .innerJoin(treeTasks, eq(treeTasks.id, treeTaskResults.taskId))
       .innerJoin(participants, eq(participants.id, treeTaskResults.participantId))
       .where(eq(treeTasks.studyId, studyId));
+
+    // Every task shares the study's tree, so its links are sorted once
+    const sortedLinks = sortValidLinks(collectValidLinks(JSON.parse(tasks[0].parsedTree)));
 
     // Process each task with the pre-fetched data
     const taskStats = tasks.map((task) => {
@@ -464,20 +471,28 @@ export async function getTasksStats(studyId: string): Promise<TaskStats[]> {
         (r) => r.successful === false && r.skipped === false
       );
 
-      // Group incorrect results by path
-      const incorrectDestinationsMap = new Map<string, number>();
+      // Group incorrect results by path taken and the leaf it ended on
+      const incorrectDestinationsMap = new Map<
+        string,
+        { path: string; configuredPath: string | null; count: number }
+      >();
       incorrectResults.forEach((result) => {
-        const pathTaken = result.pathTaken;
-        incorrectDestinationsMap.set(pathTaken, (incorrectDestinationsMap.get(pathTaken) || 0) + 1);
+        const configuredPath = resultDestination(result, sortedLinks);
+        const key = `${result.pathTaken}\0${configuredPath ?? ""}`;
+        const entry = incorrectDestinationsMap.get(key);
+        if (entry) {
+          entry.count++;
+        } else {
+          incorrectDestinationsMap.set(key, { path: result.pathTaken, configuredPath, count: 1 });
+        }
       });
 
       const totalIncorrect = incorrectResults.length;
 
-      const incorrectDestinations = Array.from(incorrectDestinationsMap.entries()).map(
-        ([path, count]) => ({
-          path,
-          count,
-          percentage: totalIncorrect ? Math.round((count / totalIncorrect) * 100) : 0,
+      const incorrectDestinations = Array.from(incorrectDestinationsMap.values()).map(
+        (destination) => ({
+          ...destination,
+          percentage: totalIncorrect ? Math.round((destination.count / totalIncorrect) * 100) : 0,
         })
       );
 
