@@ -49,3 +49,35 @@ describe("saveStudyData task removal", () => {
     expect(reloaded.tasks.items[1].description).toBe("Find the contact page");
   });
 });
+
+describe("saveStudyData empty tree", () => {
+  it("rejects an empty tree after launch and leaves the study unchanged", async () => {
+    await seedStudy(testDb, { id: "empty-tree", status: "active" });
+    const data = await loadStudyData("empty-tree");
+    data.tree = { structure: "", parsed: [] };
+    await expect(saveStudyData("empty-tree", data)).rejects.toBeInstanceOf(ForbiddenError);
+    expect((await loadStudyData("empty-tree")).tree.parsed).toHaveLength(1);
+  });
+
+  it("rejects the setup page's empty form, as saved before the study loads", async () => {
+    await seedStudy(testDb, { id: "empty-form", status: "completed" });
+    const before = await loadStudyData("empty-form");
+    const emptyForm = {
+      ...before,
+      general: { title: "", description: "", status: "draft" },
+      tree: { structure: "", parsed: [] },
+      tasks: { items: [], randomizeTasks: false },
+      messages: { welcome: "", completion: "" },
+    };
+    await expect(saveStudyData("empty-form", emptyForm)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(await loadStudyData("empty-form")).toEqual(before);
+  });
+
+  it("still lets drafts save an empty tree", async () => {
+    await seedStudy(testDb, { id: "empty-draft", status: "draft" });
+    const data = await loadStudyData("empty-draft");
+    data.tree = { structure: "", parsed: [] };
+    await saveStudyData("empty-draft", data);
+    expect((await loadStudyData("empty-draft")).tree.parsed).toHaveLength(0);
+  });
+});

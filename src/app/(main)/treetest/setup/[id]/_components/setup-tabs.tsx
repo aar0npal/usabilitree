@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import {
   updateStudyStatus,
@@ -91,6 +92,8 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
       confidenceDescription: "",
     },
   });
+  // Until the study loads, formData is the empty form above; saving it would wipe the study
+  const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -104,6 +107,7 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
       .then(([data, details]) => {
         setFormData(data);
         setStatus(details.status);
+        setIsLoaded(true);
       })
       .catch((error) => {
         toast.error("Failed to load study data");
@@ -217,6 +221,11 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
     return `Missing: ${errors.join(", ")}`;
   };
 
+  const emptyTreeError =
+    status !== "draft" && formData.tree.parsed.length === 0
+      ? `This study is ${status}, so its tree can't be empty. Paste your tree on the Tree tab and click Parse Structure before saving.`
+      : null;
+
   const hasTreeErrors = () => {
     return formData.tree.parsed.length === 0;
   };
@@ -230,6 +239,12 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
   };
 
   const handleSave = async () => {
+    if (!isLoaded) return;
+    if (emptyTreeError) {
+      toast.error(emptyTreeError);
+      return;
+    }
+
     setIsSaving(true);
     try {
       await saveStudyData(params.id, formData);
@@ -306,7 +321,12 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
   };
 
   const handleBackToDashboard = async () => {
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges && isLoaded) {
+      if (emptyTreeError) {
+        toast.error(emptyTreeError);
+        return;
+      }
+
       setIsSaving(true);
       try {
         await saveStudyData(params.id, formData);
@@ -375,7 +395,7 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
             size="sm"
             className="gap-2"
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || !isLoaded}
           >
             <SaveIcon className="h-4 w-4" />
             {isSaving ? "Saving..." : "Save"}
@@ -518,6 +538,12 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
           </AlertDialog>
         </div>
       </div>
+
+      {emptyTreeError && (
+        <Alert variant="destructive" className="mt-6">
+          <AlertDescription>{emptyTreeError}</AlertDescription>
+        </Alert>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6 w-full">
         <TabsList className="flex h-auto w-full flex-wrap items-center justify-start">

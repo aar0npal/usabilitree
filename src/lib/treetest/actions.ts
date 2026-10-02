@@ -139,6 +139,10 @@ export async function saveStudyData(id: string, data: StudyFormData) {
         .where(eq(studies.id, id));
 
       if (!study || study.userId !== user.id) throw new ForbiddenError();
+      // Answers are scored and shown against the tree, so a launched study must keep one
+      if (study.status !== "draft" && !data.tree.parsed?.length) {
+        throw new ForbiddenError("A launched study's tree can't be empty");
+      }
 
       await tx
         .update(studies)

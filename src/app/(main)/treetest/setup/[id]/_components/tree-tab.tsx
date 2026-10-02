@@ -80,6 +80,11 @@ export function TreeTab({ data, onChange }: TreeTabProps) {
       const name = parseQuotedString(line.slice(level).trim());
       const node: TreeNode = { name };
 
+      // An item with no parent would be dropped silently, possibly leaving an empty tree
+      if (level > 0 && stack.length === 0) {
+        throw new Error(`Line ${index + 1}: The first item must not start with a comma`);
+      }
+
       // Clean up stack for current level
       while (stack.length > 0 && stack[stack.length - 1].level >= level) {
         stack.pop();
