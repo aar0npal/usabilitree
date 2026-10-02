@@ -199,14 +199,16 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
             <Label htmlFor={`task-${index}`} className="text-base font-medium">
               Task {index + 1}
             </Label>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive/90"
-              onClick={() => deleteTask(index)}
-            >
-              <TrashIcon className="h-4 w-4" />
-            </Button>
+            {status === "draft" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive/90"
+                onClick={() => deleteTask(index)}
+              >
+                <TrashIcon className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           <div className="space-y-2">

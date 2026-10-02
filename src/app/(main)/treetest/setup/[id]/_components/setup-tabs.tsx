@@ -350,9 +350,10 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
                   <TooltipTrigger asChild>
                     <TriangleAlertIcon className="mr-2 hidden h-4 w-4 text-yellow-500 sm:block" />
                   </TooltipTrigger>
-                  <TooltipContent>
-                    This study is {status}. Editing will not affect past participants&apos; answers.
-                    Proceed with caution.
+                  <TooltipContent className="max-w-xs">
+                    This study is {status}. Edits apply to answers already collected: changing
+                    correct answers or the tree can change how they&apos;re scored. Tasks can&apos;t
+                    be added or removed.
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -360,8 +361,9 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
           </div>
           {status !== "draft" && (
             <p className="mt-1 block text-sm text-yellow-600 sm:hidden">
-              Warning: This study is {status}. Editing will not affect past participants&apos;
-              answers. Proceed with caution.
+              Warning: This study is {status}. Edits apply to answers already collected: changing
+              correct answers or the tree can change how they&apos;re scored. Tasks can&apos;t be
+              added or removed.
             </p>
           )}
         </div>
@@ -413,9 +415,10 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
                 <AlertDialogHeader>
                   <AlertDialogTitle>Launch Study?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will make your study live and available to participants. You can edit it
-                    later but existing participants&apos; answers will not be affected. A link to
-                    the study will be copied to your clipboard for easy sharing.
+                    This will make your study live and available to participants. A link to the
+                    study will be copied to your clipboard for easy sharing. After launch, tasks
+                    can&apos;t be added or removed. Other edits apply to answers already collected:
+                    changing correct answers or the tree can change how they&apos;re scored.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
