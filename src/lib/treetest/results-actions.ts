@@ -58,7 +58,7 @@ export async function getStudyOverviewStats(studyId: string): Promise<TreeTestOv
     // Get task success and directness rates
     const [taskStats] = await db
       .select({
-        successRate: sql<number>`avg(case when ${treeTaskResults.successful} = 1 then 100.0 else 0.0 end)`,
+        successRate: sql<number>`avg(case when ${treeTaskResults.successful} = 1 and ${treeTaskResults.skipped} = 0 then 100.0 else 0.0 end)`,
         directnessRate: sql<number>`avg(case when ${treeTaskResults.directPathTaken} = 1 then 100.0 else 0.0 end)`,
       })
       .from(treeTaskResults)
@@ -321,7 +321,7 @@ export async function getTasksStats(studyId: string): Promise<TaskStats[]> {
       }
 
       // Calculate success and directness rates
-      const successCount = taskResults.filter((r) => r.successful === true).length;
+      const successCount = taskResults.filter((r) => r.successful === true && !r.skipped).length;
       const directnessCount = taskResults.filter((r) => r.directPathTaken === true).length;
       const totalCount = taskResults.length;
 
