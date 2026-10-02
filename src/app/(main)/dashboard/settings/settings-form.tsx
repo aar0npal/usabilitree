@@ -97,7 +97,6 @@ export function SettingsForm({ user }: SettingsFormProps) {
     setIsLoading(true);
     try {
       const result = await updateUserSettings({
-        userId: user.id,
         email: data.email,
         currentPassword: data.password?.current,
         newPassword: data.password?.new,
@@ -132,7 +131,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
   const handleDeleteAccount = async () => {
     setIsLoading(true);
     try {
-      const result = await deleteUserAccount(user.id);
+      const result = await deleteUserAccount();
       if (result.error) {
         toast.error(result.error);
       } else {

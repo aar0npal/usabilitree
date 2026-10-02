@@ -4,22 +4,24 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { verify, hash } from "@/lib/auth/hash";
+import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import * as Sentry from "@sentry/react";
 
 export async function updateUserSettings({
-  userId,
   email,
   currentPassword,
   newPassword,
 }: {
-  userId: string;
   email: string;
   currentPassword?: string;
   newPassword?: string;
 }) {
   try {
-    const [existingUser] = await db.select().from(users).where(eq(users.id, userId));
+    const user = await getCurrentUser();
+    if (!user) throw new Error("Unauthorized");
+
+    const [existingUser] = await db.select().from(users).where(eq(users.id, user.id));
 
     if (!existingUser) {
       throw new Error("User not found");
@@ -31,8 +33,9 @@ export async function updateUserSettings({
     }
 
     // If changing password, verify current password
-    if (newPassword && currentPassword) {
-      const isValid = await verify(existingUser.hashedPassword!, currentPassword);
+    if (newPassword) {
+      const isValid =
+        !!currentPassword && (await verify(existingUser.hashedPassword!, currentPassword));
       if (!isValid) {
         throw new Error("Current password is incorrect");
       }
@@ -47,7 +50,7 @@ export async function updateUserSettings({
       updateData.hashedPassword = await hash(newPassword);
     }
 
-    await db.update(users).set(updateData).where(eq(users.id, userId));
+    await db.update(users).set(updateData).where(eq(users.id, user.id));
 
     revalidatePath("/dashboard/settings");
     return { success: true };
@@ -57,9 +60,12 @@ export async function updateUserSettings({
   }
 }
 
-export async function deleteUserAccount(userId: string) {
+export async function deleteUserAccount() {
   try {
-    await db.delete(users).where(eq(users.id, userId));
+    const user = await getCurrentUser();
+    if (!user) throw new Error("Unauthorized");
+
+    await db.delete(users).where(eq(users.id, user.id));
     return { success: true };
   } catch (error) {
     Sentry.captureException(error);
