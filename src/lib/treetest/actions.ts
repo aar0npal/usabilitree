@@ -236,6 +236,12 @@ export async function saveStudyData(id: string, data: StudyFormData) {
           .where(eq(treeTasks.studyId, id))
           .orderBy(treeTasks.taskIndex);
 
+        // Edits are matched to existing tasks by position, so a removed task would shift
+        // later tasks' wording and answers onto earlier tasks' results
+        if (data.tasks.items.length < existingTasks.length) {
+          throw new ForbiddenError("Tasks can't be removed after launch");
+        }
+
         const now = new Date();
         // Precompute once: the tree is identical across every task's result
         // re-evaluation, so we only walk + sort it a single time per save.
