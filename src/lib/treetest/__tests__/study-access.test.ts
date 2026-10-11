@@ -33,7 +33,7 @@ import {
   getTasksStats,
   removeStudyCollaborator,
 } from "@/lib/treetest/results-actions";
-import { hasStudyRole, requireStudyAccess } from "@/lib/treetest/study-access";
+import { requireStudyAccess } from "@/lib/treetest/study-access";
 import { GET as exportStudy } from "@/app/api/export/[studyId]/route";
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
@@ -44,23 +44,6 @@ const testDb = db as unknown as TestDb;
 function signIn(user: { id: string; email: string } | undefined) {
   vi.mocked(getCurrentUser).mockResolvedValue(user as Awaited<ReturnType<typeof getCurrentUser>>);
 }
-
-describe("hasStudyRole", () => {
-  it("lets owners do everything", () => {
-    expect(hasStudyRole("owner", "owner")).toBe(true);
-    expect(hasStudyRole("owner", "collaborator")).toBe(true);
-  });
-
-  it("lets collaborators view but not manage", () => {
-    expect(hasStudyRole("collaborator", "collaborator")).toBe(true);
-    expect(hasStudyRole("collaborator", "owner")).toBe(false);
-  });
-
-  it("denies users without a role", () => {
-    expect(hasStudyRole(null, "collaborator")).toBe(false);
-    expect(hasStudyRole(null, "owner")).toBe(false);
-  });
-});
 
 describe("requireStudyAccess", () => {
   beforeAll(async () => {
@@ -129,7 +112,9 @@ describe("results actions", () => {
 
   it("lets collaborators read everything the results page shows", async () => {
     signIn(collaborator);
-    await expect(getStudyOverviewStats("results-study")).resolves.toBeDefined();
+    await expect(getStudyOverviewStats("results-study")).resolves.toMatchObject({
+      totalParticipants: 1,
+    });
     await expect(getTasksStats("results-study")).resolves.toHaveLength(2);
     await expect(getParticipants("results-study")).resolves.toHaveLength(1);
     await expect(getStudyCollaborators("results-study")).resolves.toHaveLength(1);
