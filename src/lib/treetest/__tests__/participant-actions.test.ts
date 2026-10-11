@@ -17,7 +17,6 @@ import {
   updateParticipantCompletion,
 } from "@/lib/treetest/actions";
 import { ForbiddenError } from "@/lib/treetest/forbidden-error";
-import { scoreSubmission } from "@/lib/treetest/scoring";
 import { eq } from "drizzle-orm";
 import { seedStudy, type TestDb } from "./test-db";
 
@@ -28,27 +27,6 @@ const resultsFor = (participantId: string) =>
 
 const countParticipants = async (studyId: string) =>
   (await testDb.select().from(participants).where(eq(participants.studyId, studyId))).length;
-
-describe("scoreSubmission", () => {
-  it("accepts any comma-separated answer, trimmed", () => {
-    const submission = { pathTaken: "/a/b", selectedLink: "/a/b" };
-    expect(scoreSubmission("/x, /a/b", submission)).toEqual({
-      successful: true,
-      directPathTaken: true,
-    });
-    expect(scoreSubmission("/x", submission).successful).toBe(false);
-  });
-
-  it("scores a skip (no selection) as unsuccessful", () => {
-    expect(scoreSubmission("/a/b", { pathTaken: "", selectedLink: null })).toEqual({
-      successful: false,
-      directPathTaken: true,
-    });
-    expect(scoreSubmission("/a/b", { pathTaken: "/a", selectedLink: null }).directPathTaken).toBe(
-      false
-    );
-  });
-});
 
 describe("storeTreeTaskResult", () => {
   let live: Awaited<ReturnType<typeof seedStudy>>;

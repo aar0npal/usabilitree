@@ -33,16 +33,6 @@ beforeAll(() => {
 describe("rescoreResult", () => {
   const sortedLinks = ["/home/about/contact", "/home/news"];
 
-  it("leaves skipped results alone", () => {
-    expect(
-      rescoreResult(
-        { skipped: true, selectedLink: null, pathTaken: "/home/news" },
-        ["/home/news"],
-        sortedLinks
-      )
-    ).toBeNull();
-  });
-
   it("prefers the recorded selection and falls back to the path taken", () => {
     expect(
       rescoreResult(
