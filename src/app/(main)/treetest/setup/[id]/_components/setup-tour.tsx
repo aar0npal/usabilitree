@@ -93,10 +93,10 @@ export default function TourSetup({ actions, onComplete }: TourSetupProps) {
               return;
             }
           } else if (selectorId === SETUP_TOUR_STEP_IDS.TASKS) {
-            // For tasks tab, wait for task form or task list
-            const taskInput = element.querySelector("input#task-0");
+            // For tasks tab, wait for the tasks editor
+            const editor = element.querySelector("[data-tasks-editor]");
 
-            if (taskInput) {
+            if (editor) {
               resolve();
               return;
             }
