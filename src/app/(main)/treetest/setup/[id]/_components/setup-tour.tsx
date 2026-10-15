@@ -85,10 +85,10 @@ export default function TourSetup({ actions, onComplete }: TourSetupProps) {
               return;
             }
           } else if (selectorId === SETUP_TOUR_STEP_IDS.TREE) {
-            // For tree tab, wait for textarea or tree view
-            const textarea = element.querySelector("textarea");
+            // For tree tab, wait for the tree editor
+            const editor = element.querySelector("[data-tree-editor]");
 
-            if (textarea) {
+            if (editor) {
               resolve();
               return;
             }
