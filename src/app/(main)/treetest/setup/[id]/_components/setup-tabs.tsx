@@ -223,7 +223,7 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
 
   const emptyTreeError =
     status !== "draft" && formData.tree.parsed.length === 0
-      ? `This study is ${status}, so its tree can't be empty. Paste your tree on the Tree tab and click Parse Structure before saving.`
+      ? `This study is ${status}, so its tree can't be empty. Add your tree on the Tree tab before saving.`
       : null;
 
   const hasTreeErrors = () => {
