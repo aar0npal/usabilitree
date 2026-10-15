@@ -1,5 +1,5 @@
 import type { TreeNode } from "@/lib/types/tree-test";
-import { sanitizeTreeTestLink } from "@/lib/utils";
+import { isBlank, pathSegment, type PathRule } from "@/lib/treetest/path-rule";
 
 /**
  * The tree as the setup editor holds it: a flat list in reading order, each
@@ -35,22 +35,21 @@ export function isParentRow(rows: OutlineRow[], index: number) {
 }
 
 /**
- * Each row's path: its ancestors' names and its own, each through
- * sanitizeTreeTestLink. Task answers and recorded results store these
- * strings, so the rule must not change.
+ * Each row's path: its ancestors' names and its own, each made a segment by
+ * the study's rule. Task answers and recorded results store these strings.
  */
-export function rowPaths(rows: OutlineRow[]): string[] {
+export function rowPaths(rows: OutlineRow[], rule: PathRule): string[] {
   const trail: string[] = [];
   return rows.map((row) => {
     trail.length = row.level;
-    trail.push(sanitizeTreeTestLink(row.name.trim()));
+    trail.push(pathSegment(row.name.trim(), rule));
     return `/${trail.join("/")}`;
   });
 }
 
 /** The tree participants see, with every leaf's `link` set to its path */
-export function treeFromRows(rows: OutlineRow[]): TreeNode[] {
-  const paths = rowPaths(rows);
+export function treeFromRows(rows: OutlineRow[], rule: PathRule): TreeNode[] {
+  const paths = rowPaths(rows, rule);
   const root: TreeNode[] = [];
   const stack: TreeNode[] = [];
   rows.forEach((row, index) => {
@@ -96,17 +95,17 @@ export type PathIssue =
 /**
  * Rows whose path can't tell them apart from another item. Answers and
  * clicks are recorded as paths, so two items on one path are one item in the
- * results. A path keeps only a–z, 0–9, "_" and "-", so names in other scripts
- * (Japanese, Cyrillic, Arabic…) and names that differ only by symbols ("C++",
- * "C#") collide.
+ * results. Paths drop symbols, so names that differ only by them ("C++",
+ * "C#") collide; under the original rule, so do names in other scripts
+ * (Japanese, Cyrillic, Arabic…), whose segments come out blank.
  */
-export function findPathIssues(rows: OutlineRow[]): Map<string, PathIssue> {
+export function findPathIssues(rows: OutlineRow[], rule: PathRule): Map<string, PathIssue> {
   const issues = new Map<string, PathIssue>();
-  const paths = rowPaths(rows);
+  const paths = rowPaths(rows, rule);
   const firstByPath = new Map<string, number>();
   rows.forEach((row, index) => {
     if (!row.name.trim()) return;
-    if (sanitizeTreeTestLink(row.name.trim()).replace(/-/g, "") === "") {
+    if (isBlank(pathSegment(row.name.trim(), rule))) {
       issues.set(row.id, { kind: "empty" });
     }
     const first = firstByPath.get(paths[index]);

@@ -576,7 +576,7 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
         </TabsContent>
 
         <TabsContent value="tree">
-          <TreeTab data={formData} onChange={setFormData} />
+          <TreeTab data={formData} status={status} onChange={setFormData} />
         </TabsContent>
 
         <TabsContent value="tasks">

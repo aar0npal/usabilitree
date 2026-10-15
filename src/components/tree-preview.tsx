@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { TreeNode } from "@/lib/types/tree-test";
-import { cn, sanitizeTreeTestLink } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { pathOf, treePathRule } from "@/lib/treetest/path-rule";
 import { Button } from "@/components/ui/button";
 
 interface TreeNodeWithExpanded extends TreeNode {
@@ -38,6 +39,7 @@ export function TreePreview({
   }, []);
 
   const [treeState, setTreeState] = useState<TreeNodeWithExpanded[]>(initializeExpandedTree(nodes));
+  const pathRule = useMemo(() => treePathRule(nodes), [nodes]);
 
   // Update tree state when nodes prop changes (e.g., after parsing)
   useEffect(() => {
@@ -156,7 +158,12 @@ export function TreePreview({
   const handleLinkClick = (link: string) => setSelectedLink(link);
 
   const handleSelectNonLeaf = (currentPath: TreeNodeWithExpanded[]) => {
-    setSelectedLink("/" + currentPath.map((n) => sanitizeTreeTestLink(n.name)).join("/"));
+    setSelectedLink(
+      pathOf(
+        currentPath.map((n) => n.name),
+        pathRule
+      )
+    );
   };
 
   const renderNodes = (
@@ -168,7 +175,10 @@ export function TreePreview({
       const currentPath = [...parentPath, node];
       const hasChildren = node.children && node.children.length > 0;
 
-      const nodeLink = "/" + currentPath.map((n) => sanitizeTreeTestLink(n.name)).join("/");
+      const nodeLink = pathOf(
+        currentPath.map((n) => n.name),
+        pathRule
+      );
 
       return (
         <div key={`${node.name}-${level}-${index}`} className={level > 0 ? "ml-4" : ""}>

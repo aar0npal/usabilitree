@@ -50,6 +50,7 @@ import { TreePreview } from "@/components/tree-preview";
 import { cn } from "@/lib/utils";
 import { parseTreeText, type TreeImport } from "@/lib/treetest/tree-import";
 import { emptyHistory, record, redo, undo, type EditHistory } from "@/lib/treetest/edit-history";
+import type { PathRule } from "@/lib/treetest/path-rule";
 import {
   canIndent,
   canOutdent,
@@ -87,6 +88,7 @@ const HIDDEN = { height: 0, opacity: 0 };
 interface TreeEditorProps {
   rows: OutlineRow[];
   onRowsChange: (rows: OutlineRow[]) => void;
+  pathRule: PathRule;
   /** Parents are answers too, so they show their paths */
   allowNonLeafAnswers: boolean;
   /** Comma text a study saved without ever turning it into a tree; the empty state offers to read it */
@@ -97,6 +99,7 @@ interface TreeEditorProps {
 export function TreeEditor({
   rows,
   onRowsChange,
+  pathRule,
   allowNonLeafAnswers,
   unparsedText,
   selectAsAnswerText,
@@ -166,8 +169,8 @@ export function TreeEditor({
     }
   };
 
-  const paths = React.useMemo(() => rowPaths(rows), [rows]);
-  const issues = React.useMemo(() => findPathIssues(rows), [rows]);
+  const paths = React.useMemo(() => rowPaths(rows, pathRule), [rows, pathRule]);
+  const issues = React.useMemo(() => findPathIssues(rows, pathRule), [rows, pathRule]);
   // The chevron turns at once and the rows follow in a background render, so opening a big
   // subtree mounts its rows between animation frames instead of freezing them
   const listCollapsed = React.useDeferredValue(collapsed);
@@ -692,6 +695,7 @@ export function TreeEditor({
                           }
                           fullPath={paths[index]}
                           issue={issue}
+                          pathRule={pathRule}
                           coarse={coarse}
                           canIndent={editing && canIndent(rows, index)}
                           canOutdent={editing && canOutdent(rows, index)}
@@ -772,7 +776,7 @@ export function TreeEditor({
               </DialogHeader>
               {previewOpen && (
                 <TreePreview
-                  nodes={treeFromRows(rowsToSave(rows))}
+                  nodes={treeFromRows(rowsToSave(rows), pathRule)}
                   allowNonLeafAnswers={allowNonLeafAnswers}
                   selectAsAnswerText={selectAsAnswerText}
                 />
@@ -810,6 +814,7 @@ interface RowItemProps {
   path: string | null;
   fullPath: string;
   issue: PathIssue | undefined;
+  pathRule: PathRule;
   coarse: boolean;
   canIndent: boolean;
   canOutdent: boolean;
@@ -829,6 +834,7 @@ const RowItem = React.memo(function RowItem({
   path,
   fullPath,
   issue,
+  pathRule,
   coarse,
   canIndent,
   canOutdent,
@@ -892,7 +898,9 @@ const RowItem = React.memo(function RowItem({
           ) : (
             <span className="min-w-0 max-w-full truncate">{row.name}</span>
           )}
-          {path !== null && <PathPill path={path} full={fullPath} issue={issue} />}
+          {path !== null && (
+            <PathPill path={path} full={fullPath} issue={issue} pathRule={pathRule} />
+          )}
         </div>
         {editing && !coarse && (
           <RowTools
@@ -940,7 +948,17 @@ function planMotion(before: string[], after: string[]) {
   };
 }
 
-function PathPill({ path, full, issue }: { path: string; full: string; issue?: PathIssue }) {
+function PathPill({
+  path,
+  full,
+  issue,
+  pathRule,
+}: {
+  path: string;
+  full: string;
+  issue?: PathIssue;
+  pathRule: PathRule;
+}) {
   const pill = (
     <span
       title={issue ? undefined : full}
@@ -957,7 +975,7 @@ function PathPill({ path, full, issue }: { path: string; full: string; issue?: P
   return (
     <Tooltip>
       <TooltipTrigger asChild>{pill}</TooltipTrigger>
-      <TooltipContent className="max-w-xs">{issueText(issue)}</TooltipContent>
+      <TooltipContent className="max-w-xs">{issueText(issue, pathRule)}</TooltipContent>
     </Tooltip>
   );
 }
@@ -1157,10 +1175,13 @@ function useWidth() {
 /** Keeps the field focused (and a phone's keyboard up) when a toolbar button is pressed */
 const keepFocus = (event: React.SyntheticEvent) => event.preventDefault();
 
-function issueText(issue: PathIssue) {
-  return issue.kind === "duplicate"
-    ? `Same path as “${issue.withName}”, so answers to the two can't be told apart. Rename one.`
-    : "Paths keep only a–z, 0–9, - and _, so this name's path is blank and answers to it can be mixed up with others. Add a word in a–z.";
+function issueText(issue: PathIssue, rule: PathRule) {
+  if (issue.kind === "duplicate")
+    return `Same path as “${issue.withName}”, so answers to the two can't be told apart. Rename one.`;
+  // A launched study keeps the rule its answers were recorded with
+  return rule === "original"
+    ? "This study's paths keep only a–z, 0–9, - and _, so this name's path is blank and answers to it can be mixed up with others. Add a word in a–z."
+    : "This name has nothing a path can keep, so its path is blank and answers to it can be mixed up with others. Add a word.";
 }
 
 function describeImport(result: TreeImport, source: string) {
