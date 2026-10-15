@@ -19,14 +19,16 @@ import {
   treeFromRows,
   type OutlineRow,
 } from "@/lib/treetest/tree-outline";
+import { editorPathRule } from "@/lib/treetest/path-rule";
 import { TreeEditor } from "./tree-editor";
 
 interface TreeTabProps {
   data: StudyFormData;
+  status: string;
   onChange: (data: StudyFormData) => void;
 }
 
-export function TreeTab({ data, onChange }: TreeTabProps) {
+export function TreeTab({ data, status, onChange }: TreeTabProps) {
   const [rows, setRows] = React.useState<OutlineRow[]>(() => rowsFromTree(data.tree.parsed));
   // The tree this tab last saved into the form, to tell its own edits from a tree loaded or copied in
   const emitted = React.useRef<TreeNode[]>(data.tree.parsed);
@@ -37,10 +39,15 @@ export function TreeTab({ data, onChange }: TreeTabProps) {
     setRows(rowsFromTree(data.tree.parsed));
   }, [data.tree.parsed]);
 
+  const pathRule = React.useMemo(
+    () => editorPathRule(data.tree.parsed, status),
+    [data.tree.parsed, status]
+  );
+
   const handleRowsChange = (next: OutlineRow[]) => {
     setRows(next);
     const saved = rowsToSave(next);
-    const parsed = treeFromRows(saved);
+    const parsed = treeFromRows(saved, pathRule);
     emitted.current = parsed;
     onChange({ ...data, tree: { structure: structureFromRows(saved), parsed } });
   };
@@ -80,6 +87,7 @@ export function TreeTab({ data, onChange }: TreeTabProps) {
       <TreeEditor
         rows={rows}
         onRowsChange={handleRowsChange}
+        pathRule={pathRule}
         allowNonLeafAnswers={data.tasks.allowNonLeafAnswers ?? false}
         unparsedText={unparsedText}
         selectAsAnswerText={data.customText.selectAsAnswer}

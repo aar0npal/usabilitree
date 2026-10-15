@@ -11,7 +11,7 @@ import {
 import { and, eq, inArray, sql } from "drizzle-orm";
 import * as z from "zod";
 import { Item, ParentClickStats, TreeTestOverviewStats } from "../types/tree-test";
-import { sanitizeTreeTestLink } from "../utils";
+import { pathSegment, treePathRule } from "./path-rule";
 import { ForbiddenError } from "./forbidden-error";
 import { collectValidLinks, resultDestination, sortValidLinks } from "./selected-link";
 import { pathIncludes, pathStartsWith } from "./tree-path";
@@ -407,7 +407,7 @@ export async function getTasksStats(studyId: string): Promise<TaskStats[]> {
 
       // Process paths to get parent click statistics
       const parentClickStats = new Map<string, ParentClickStats>();
-      const homeRoot = hasOnlyHomeRoot ? sanitizeTreeTestLink(tree[0].name) : "";
+      const homeRoot = hasOnlyHomeRoot ? pathSegment(tree[0].name, treePathRule(tree)) : "";
 
       pathResults.forEach((result) => {
         const expectedAnswers = task.expectedAnswer.split(",").map((answer) => answer.trim());

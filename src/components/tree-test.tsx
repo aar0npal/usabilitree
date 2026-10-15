@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { storeTreeTaskResult } from "@/lib/treetest/actions";
 import { Item, ItemWithExpanded, TreeTestConfig } from "@/lib/types/tree-test";
-import { cn, sanitizeTreeTestLink } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { pathSegment, treePathRule } from "@/lib/treetest/path-rule";
 import * as Sentry from "@sentry/react";
 import { ChevronDown, ChevronRight, CircleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -59,12 +60,15 @@ const Navigation = ({
 }: NavigationProps) => {
   const [treeState, setTreeState] = useState<ItemWithExpanded[]>([]);
   const [selectedLink, setSelectedLink] = useState<string>();
+  // Clicks are recorded as paths, built the way this study's leaf links were
+  const pathRule = useMemo(() => treePathRule(items), [items]);
+  const segment = (name: string) => pathSegment(name, pathRule);
 
   useEffect(() => {
     // Check if there's only one root item containing "Home"
     const isOnlyRootHome = items.length === 1;
     // && items[0].name.toLowerCase().includes("home");
-    const initialRootLink = isOnlyRootHome ? "/" + sanitizeTreeTestLink(items[0].name) : "";
+    const initialRootLink = isOnlyRootHome ? "/" + pathSegment(items[0].name, pathRule) : "";
 
     // Initialize tree with expansion states
     const initializeTree = (items: Item[], level: number = 0): ItemWithExpanded[] => {
@@ -78,13 +82,13 @@ const Navigation = ({
     setTreeState(initializeTree(items));
     setSelectedLink("");
     setPathTaken(initialRootLink);
-  }, [resetKey, items, setPathTaken]);
+  }, [resetKey, items, pathRule, setPathTaken]);
 
   const appendPath = (prev: string, name: string) => {
-    const sanitizedPath = sanitizeTreeTestLink(name);
-    const newPath = `${prev}/${sanitizedPath}`;
+    const step = segment(name);
+    const newPath = `${prev}/${step}`;
     // Prevent duplicate when toggling the same folder repeatedly
-    return prev.endsWith(`/${sanitizedPath}`) ? prev : newPath;
+    return prev.endsWith(`/${step}`) ? prev : newPath;
   };
 
   const toggleExpand = (path: string[]) => {
@@ -138,11 +142,11 @@ const Navigation = ({
   const handleLinkClick = (link: string, name: string) => {
     setSelectedLink(link);
     // Always append for leaf clicks - a leaf can share a name with its parent folder
-    setPathTaken((prev) => `${prev}/${sanitizeTreeTestLink(name)}`);
+    setPathTaken((prev) => `${prev}/${segment(name)}`);
   };
 
   const handleSelectNonLeaf = (currentPath: string[]) => {
-    const nodeLink = "/" + currentPath.map(sanitizeTreeTestLink).join("/");
+    const nodeLink = "/" + currentPath.map(segment).join("/");
     setSelectedLink(nodeLink);
     // Use the dedupe-aware append so expand-then-select doesn't double-append the segment
     setPathTaken((prev) => appendPath(prev, currentPath[currentPath.length - 1]));
@@ -152,7 +156,7 @@ const Navigation = ({
   const renderItems = (items: ItemWithExpanded[], parentPath: string[] = []) => {
     return items.map((item) => {
       const currentPath = [...parentPath, item.name];
-      const nodeLink = "/" + currentPath.map(sanitizeTreeTestLink).join("/");
+      const nodeLink = "/" + currentPath.map(segment).join("/");
 
       return (
         <div key={item.name} className={`${parentPath.length ? "ml-4" : ""} mb-2`}>
@@ -314,6 +318,7 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
   const [bannerHeight, setBannerHeight] = useState(0);
   const bannerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathRule = useMemo(() => treePathRule(config.tree), [config.tree]);
 
   // Create confidence levels with custom labels
   const confidenceLevelsArray = useMemo(
@@ -409,7 +414,7 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
 
       const isOnlyRootHome = config.tree.length === 1;
       //&& config.tree[0].name.toLowerCase().includes("home");
-      const rootLink = isOnlyRootHome ? sanitizeTreeTestLink(config.tree[0].name) : "";
+      const rootLink = isOnlyRootHome ? pathSegment(config.tree[0].name, pathRule) : "";
 
       // An empty path (the user didn't touch the nav menu) is scored as a direct skip
       await storeTreeTaskResult(config.participantId, config.tasks[currentTask].id, {

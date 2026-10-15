@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-// The path rule lives in @/lib/utils, which reads the app's env
+// The original path rule lives in @/lib/utils, which reads the app's env
 vi.mock("@/env", () => ({ env: {} }));
 
 import { sampleParsedTree, sampleTreeStructure } from "@/lib/treetest/sample-data";
 import { parseTreeText } from "@/lib/treetest/tree-import";
+import type { PathRule } from "@/lib/treetest/path-rule";
 import {
   canIndent,
   collapseAllIds,
@@ -37,12 +38,12 @@ describe("saving the editor's tree", () => {
   it("rebuilds the sample study's saved tree, links and all, from its comma text", () => {
     // The sample study's comma text and its saved tree were written separately; the editor must agree with both
     const { rows: imported } = parseTreeText(sampleTreeStructure);
-    expect(treeFromRows(imported)).toEqual(sampleParsedTree);
+    expect(treeFromRows(imported, "original")).toEqual(sampleParsedTree);
   });
 
   it("reloads a saved tree as the same rows", () => {
     const loaded = rowsFromTree(sampleParsedTree);
-    expect(treeFromRows(loaded)).toEqual(sampleParsedTree);
+    expect(treeFromRows(loaded, "original")).toEqual(sampleParsedTree);
     expect(structureFromRows(loaded)).toBe(sampleTreeStructure);
   });
 
@@ -54,7 +55,8 @@ describe("saving the editor's tree", () => {
         "Business Permits@2",
         "Health Services@2",
         "About Us@1"
-      )
+      ),
+      "original"
     );
     expect(tree).toEqual([
       {
@@ -79,7 +81,7 @@ describe("saving the editor's tree", () => {
   it("trims names, and drops unnamed rows without orphaning the rows under them", () => {
     const saved = rowsToSave(rows("  Home  @0", "@1", "Permits@2", "About@1"));
     expect(shape(saved)).toEqual(["  Home  @0", "Permits@1", "About@1"]);
-    expect(treeFromRows(saved)[0].name).toBe("Home");
+    expect(treeFromRows(saved, "original")[0].name).toBe("Home");
   });
 
   it("writes comma text that reads back as the same tree, commas in names included", () => {
@@ -146,9 +148,9 @@ describe("editing rows", () => {
 });
 
 describe("paths that can't tell items apart", () => {
-  const issuesByName = (list: OutlineRow[]) =>
+  const issuesByName = (list: OutlineRow[], rule: PathRule = "original") =>
     Object.fromEntries(
-      Array.from(findPathIssues(list), ([id, issue]) => [
+      Array.from(findPathIssues(list, rule), ([id, issue]) => [
         list.find((row) => row.id === id)!.name,
         issue,
       ])
@@ -156,7 +158,8 @@ describe("paths that can't tell items apart", () => {
 
   it("finds nothing in a tree whose paths are all distinct", () => {
     expect(
-      findPathIssues(rows("Home@0", "Services@1", "Contact@2", "About@1", "Contact@2")).size
+      findPathIssues(rows("Home@0", "Services@1", "Contact@2", "About@1", "Contact@2"), "original")
+        .size
     ).toBe(0);
   });
 
@@ -179,38 +182,60 @@ describe("paths that can't tell items apart", () => {
     });
   });
 
-  it("flags names in scripts the path can't hold at all", () => {
-    const scripts = [
-      "サービス",
-      "服务",
-      "Услуги",
-      "Υπηρεσίες",
-      "خدماتنا",
-      "שירותים",
-      "บริการ",
-      "सेवाएं",
-    ];
+  const scripts = [
+    "サービス",
+    "服务",
+    "Услуги",
+    "Υπηρεσίες",
+    "خدماتنا",
+    "שירותים",
+    "บริการ",
+    "सेवाएं",
+  ];
+
+  it("under the original rule, flags names in scripts the path can't hold at all", () => {
     for (const name of scripts) {
       expect(issuesByName(rows("Home@0", `${name}@1`))).toEqual({ [name]: { kind: "empty" } });
     }
     // Korean keeps only the space between its words, as a lone hyphen
-    expect(rowPaths(rows("Home@0", "고객 지원@1"))[1]).toBe("/home/-");
+    expect(rowPaths(rows("Home@0", "고객 지원@1"), "original")[1]).toBe("/home/-");
     expect(issuesByName(rows("Home@0", "고객 지원@1"))).toEqual({ "고객 지원": { kind: "empty" } });
   });
 
   it("keeps accented names apart, though their paths lose the accented letters", () => {
     const list = rows("Inicio@0", "Servicios públicos@1", "Über uns@1", "Café crème@1");
-    expect(rowPaths(list)).toEqual([
+    expect(rowPaths(list, "original")).toEqual([
       "/inicio",
       "/inicio/servicios-pblicos",
       "/inicio/ber-uns",
       "/inicio/caf-crme",
     ]);
-    expect(findPathIssues(list).size).toBe(0);
+    expect(findPathIssues(list, "original").size).toBe(0);
+  });
+
+  it("under the multilingual rule, keeps those names apart by their own letters", () => {
+    const list = rows("Home@0", ...scripts.map((name) => `${name}@1`), "고객 지원@1");
+    expect(rowPaths(list, "multilingual").slice(1)).toEqual([
+      "/home/サービス",
+      "/home/服务",
+      "/home/услуги",
+      "/home/υπηρεσίες",
+      "/home/خدماتنا",
+      "/home/שירותים",
+      "/home/บริการ",
+      "/home/सेवाएं",
+      "/home/고객-지원",
+    ]);
+    expect(findPathIssues(list, "multilingual").size).toBe(0);
+    // Symbols still drop wherever a letter is left, so these stay one path
+    expect(issuesByName(rows("Courses@0", "C++@1", "C#@1"), "multilingual")).toEqual({
+      "C++": { kind: "duplicate", withName: "C#" },
+      "C#": { kind: "duplicate", withName: "C++" },
+    });
   });
 
   it("ignores rows still being named", () => {
-    expect(findPathIssues(rows("Home@0", "@1", "@1")).size).toBe(0);
+    expect(findPathIssues(rows("Home@0", "@1", "@1"), "original").size).toBe(0);
   });
 });
 
