@@ -1,0 +1,1113 @@
+/* UsabiliTree v1 tokens (shadcn neutral + the preview's Tailwind grays) */
+.utp .ss-stage {
+  --utp-fg: #0a0a0a;
+  --utp-muted: #f5f5f5;
+  --utp-muted-fg: #737373;
+  --utp-border: #e5e5e5;
+  --utp-leaf: #f9fafb;
+  --utp-parent: #f3f4f6;
+  --utp-row-text: #111827;
+  --utp-icon: #4b5563;
+  /* UIKit-quick: off the tap fast, long soft settle */
+  --utp-ui: cubic-bezier(0.3, 0.75, 0.1, 1);
+  overflow: hidden;
+  background: var(--ss-well);
+}
+
+/* Pinned one gutter from the top, centered, running off the bottom through the keyboard */
+.utp .utp-phone {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  translate: -50% 0;
+}
+
+/* One gutter: the phone column's 16px on the top and both sides */
+.utp .ss-stage[data-layout="compact"] .utp-phone {
+  top: 16px;
+}
+
+/* ---- The page, in iOS points ---- */
+
+.utp .utp-page {
+  position: absolute;
+  inset: 54px 0 0;
+  /* Set so the toolbar's top edge falls in a row's bottom padding, never through its words */
+  padding: 10px 16px 0;
+  color: var(--utp-fg);
+}
+
+/* The setup tabs, labels only at phone width (shadcn TabsList) */
+.utp .utp-tabs {
+  display: flex;
+  gap: 2px;
+  height: 36px;
+  padding: 4px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: var(--utp-muted);
+}
+
+/* At phone width the four tabs share the strip evenly */
+.utp .utp-tab {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--utp-muted-fg);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.utp .utp-tab[data-active] {
+  background: #fff;
+  color: var(--utp-fg);
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+/* The text shares a baseline; the head is exactly the label's line box, so the
+   badge, centered in it, sits on the label's caps */
+.utp .utp-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  height: 20px;
+  /* On the rows' text edge, and the old textarea's */
+  padding: 0 14px;
+  margin-bottom: 12px;
+  white-space: nowrap;
+}
+
+/* v1's Label: text-sm, medium, at every width */
+.utp .utp-label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+/* shadcn's Badge, default variant, at its own text-xs: on a phone the desktop's 11px would draw under 9px */
+.utp .utp-badge {
+  align-self: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--utp-fg);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+/* The secondary variant: today's version, named but not shouted */
+.utp .utp-badge--old {
+  background: #f4f4f5;
+  color: #52525b;
+}
+
+/* ---- The swap: each version a whole layer (header and body), the new one wiped in over the old ---- */
+
+.utp .utp-swap {
+  position: relative;
+  display: grid;
+}
+
+.utp .utp-swap > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.utp .utp-old {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.utp .utp-old .utp-head {
+  align-self: stretch;
+}
+
+/* Its last sliver fades as the line reaches the left edge, then it's out of the tree */
+.utp .utp-swap[data-version="new"] .utp-old {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.15s linear 0.95s,
+    visibility 0s linear 1.1s;
+}
+
+/* The old label leaves whole, so no identical fragment appears ahead of
+   the new header as the wipe reaches the left inset. */
+.utp .utp-swap[data-version="new"] .utp-old .utp-head {
+  opacity: 0;
+  transition: opacity 160ms ease 300ms;
+}
+
+/* v1's Textarea below md: mono at 16px, so the placeholder wraps as it does on a phone today */
+.utp .utp-textarea {
+  align-self: stretch;
+  min-height: 300px;
+  /* Its text on the label's edge, inside the 1px border */
+  padding: 8px 12px 8px 13px;
+  border: 1px solid var(--utp-border);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  color: var(--utp-muted-fg);
+  font:
+    16px/24px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  white-space: pre-wrap;
+}
+
+/* v1's Button, default variant */
+.utp .utp-parse {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  margin-top: 16px;
+  padding: 0 16px;
+  border-radius: 6px;
+  background: var(--utp-fg);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* The new version: an opaque layer revealed from the right edge to the left */
+.utp .utp-new {
+  background: #fff;
+  clip-path: inset(0 0 0 100%);
+  transition: clip-path 1.1s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.utp .utp-swap[data-version="new"] .utp-new {
+  clip-path: inset(0);
+}
+
+/* The empty state and the rows share this box */
+.utp .utp-editor {
+  position: relative;
+}
+
+/* The line rides the wipe's edge: the whole layer slides, synced to the clip, and the line only fades */
+.utp .utp-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transform: translateX(100%);
+  visibility: hidden;
+}
+
+.utp .utp-swap[data-version="new"] .utp-wipe {
+  transform: none;
+  visibility: visible;
+  transition: transform 1.1s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.utp .utp-wipe__line {
+  position: absolute;
+  top: -6px;
+  bottom: 0;
+  left: -1px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--utp-fg);
+  opacity: 0;
+}
+
+/* In as it starts, out as it reaches the left edge */
+.utp .utp-swap[data-version="new"] .utp-wipe__line {
+  animation: utp-wipe-line 1.1s linear both;
+}
+
+@keyframes utp-wipe-line {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .utp .utp-wipe {
+    display: none;
+  }
+}
+
+/* ---- The empty state, over where the rows will be ---- */
+
+.utp .utp-empty {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 16px 0;
+  text-align: center;
+  transition:
+    opacity 0.28s ease,
+    scale 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+    visibility 0s;
+}
+
+/* Imported: the empty state gives way to the rows coming in under it */
+.utp .utp-empty[data-gone] {
+  visibility: hidden;
+  opacity: 0;
+  scale: 0.985;
+  transition:
+    opacity 0.28s ease,
+    scale 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+    visibility 0s linear 0.4s;
+}
+
+.utp .utp-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  background: var(--utp-muted);
+  color: #525252;
+}
+
+.utp .utp-empty__title {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.utp .utp-empty__line {
+  margin-top: 4px;
+  color: var(--utp-muted-fg);
+  font-size: 15px;
+  line-height: 20px;
+  text-wrap: balance;
+}
+
+.utp .utp-empty__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* v1's Button, outline variant, at touch height */
+.utp .utp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--utp-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  color: var(--utp-fg);
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.12s ease;
+}
+
+.utp .utp-btn[data-pressed] {
+  background: var(--utp-muted);
+}
+
+.utp .utp-btn svg {
+  flex: none;
+  color: var(--utp-icon);
+}
+
+/* Whole, even widths (their words are 80.7 and 62.6 wide), so the pair centers
+   on a whole point and each icon sits on one */
+.utp .utp-btn:first-child {
+  width: 142px;
+}
+
+.utp .utp-btn:last-child {
+  width: 124px;
+}
+
+/* ---- Rows: the preview's anatomy at touch size ---- */
+
+.utp .utp-rows > .utp-row:not(:first-child) {
+  margin-top: 8px;
+}
+
+/* A row that opens or closes (the new item, the deleted one): its gap rides inside its Collapse */
+.utp .utp-gap {
+  padding-top: 8px;
+}
+
+/* A grid whose text column may shrink to nothing, so a long path truncates
+   instead of widening the row (and the Collapse a new row rides in) */
+.utp .utp-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 6px;
+  background: var(--utp-leaf);
+  color: var(--utp-row-text);
+  /* 16pt: iOS Safari zooms into a focused field set any smaller */
+  font-size: 16px;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.utp .utp-row[data-parent] {
+  background: var(--utp-parent);
+}
+
+/* A leaf is taller by its path's line; becoming a parent, it gives that line up */
+.utp .utp-row[data-leaf] {
+  /* Its two lines sit 11pt from top and bottom, near the 14pt side inset, as an iOS subtitle cell's do */
+  height: 60px;
+}
+
+/* ---- The imported rows arrive top to bottom ---- */
+
+.utp .utp-rows .utp-row {
+  transition:
+    margin-left 0.28s var(--utp-ui),
+    height 0.28s var(--utp-ui),
+    background-color 0.2s ease,
+    box-shadow 0.15s ease,
+    opacity 0.42s cubic-bezier(0.25, 0.8, 0.25, 1) calc(var(--i, 0) * 60ms + 120ms),
+    translate 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) calc(var(--i, 0) * 60ms + 120ms);
+}
+
+.utp .utp-rows:not([data-in]) .utp-row {
+  opacity: 0;
+  translate: 0 6px;
+}
+
+.utp .utp-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+/* A leaf's path, in v1's preview badge colors (blue-100, blue-700) */
+.utp .utp-path {
+  display: block;
+  max-width: 100%;
+  max-height: 18px;
+  margin-top: 2px;
+  overflow: hidden;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  /* iOS's footnote size: v1's 12px would draw under 10px on the smallest stage */
+  font-size: 13px;
+  line-height: 16px;
+  opacity: 0;
+  transition:
+    opacity 0.18s ease,
+    max-height 0.28s var(--utp-ui),
+    margin-top 0.28s var(--utp-ui),
+    padding 0.28s var(--utp-ui);
+}
+
+.utp .utp-path[data-show] {
+  opacity: 1;
+}
+
+/* A parent has no path line: a leaf that becomes one folds it away as the row
+   shortens, so its name glides to the middle instead of jumping there */
+.utp .utp-row:not([data-leaf]) .utp-path {
+  max-height: 0;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.utp .utp-row[data-editing] {
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--utp-fg);
+}
+
+.utp .utp-name {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.utp .utp-chevron {
+  flex: none;
+  color: var(--utp-icon);
+  opacity: 0;
+  transform: scale(0.6) rotate(-90deg);
+  transition:
+    opacity 0.18s ease,
+    transform 0.3s var(--utp-ui);
+}
+
+.utp .utp-row[data-parent] .utp-chevron {
+  opacity: 1;
+  transform: none;
+}
+
+.utp .utp-row[data-collapsed] .utp-chevron {
+  transform: rotate(-90deg);
+}
+
+.utp .utp-caret {
+  width: 2px;
+  height: 20px;
+  margin-left: 1px;
+  margin-right: -3px;
+  border-radius: 1px;
+  /* The iOS insertion point */
+  background: #007aff;
+  animation: ss-caret 1.06s steps(1) 0.5s infinite;
+}
+
+/* Out of flow, so typed text never moves; leaves on the first character */
+/* At the caret, as iOS draws it: the insertion point blinks on its first letter */
+.utp .utp-placeholder {
+  position: absolute;
+  left: 0;
+  color: #a3a3a3;
+  opacity: 0;
+  transition: none;
+  pointer-events: none;
+}
+
+.utp .utp-placeholder[data-show] {
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+/* ---- iOS's Files sheet ---- */
+
+.utp .utp-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: rgb(0 0 0 / 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.42s var(--utp-ui),
+    visibility 0s linear 0.42s;
+}
+
+.utp .utp-scrim[data-show] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.42s var(--utp-ui),
+    visibility 0s;
+}
+
+/* A page sheet: 10pt under the status bar, its top corners rounded */
+.utp .utp-sheet {
+  position: absolute;
+  top: 72px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+  padding: 0 16px;
+  /* The kit's iOS 27 keyboard rounds its sheet as large */
+  border-radius: 28px 28px 0 0;
+  background: #fff;
+  box-shadow: 0 -1px 8px rgb(0 0 0 / 0.06);
+  color: #000;
+  font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  /* A lasting layer, so its text lands without a hop */
+  will-change: transform;
+  transform: translateY(100%);
+  visibility: hidden;
+  transition:
+    transform 0.42s var(--utp-ui),
+    visibility 0s linear 0.42s;
+}
+
+.utp .utp-sheet[data-open] {
+  transform: none;
+  visibility: visible;
+  transition:
+    transform 0.42s var(--utp-ui),
+    visibility 0s;
+}
+
+.utp .utp-sheet__nav {
+  display: flex;
+  align-items: center;
+  height: 52px;
+}
+
+.utp .utp-sheet__cancel {
+  color: #007aff;
+  font-size: 17px;
+}
+
+.utp .utp-sheet__title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 41px;
+}
+
+.utp .utp-sheet__search svg {
+  flex: none;
+  /* Opaque, the gray the 60% label color draws on this fill */
+  color: #8a8a8e;
+}
+
+.utp .utp-sheet__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 8px;
+  margin: 8px 0 12px;
+  border-radius: 10px;
+  background: rgb(118 118 128 / 0.12);
+  color: rgb(60 60 67 / 0.6);
+  font-size: 17px;
+}
+
+.utp .utp-file {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 68px;
+}
+
+/* The press highlight runs edge to edge on its own layer, so the row's box never changes */
+.utp .utp-file::before {
+  content: "";
+  position: absolute;
+  inset: 0 -16px;
+  z-index: -1;
+  background: #e5e5ea;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.utp .utp-file[data-pressed]::before {
+  opacity: 1;
+}
+
+/* Separators start at the text, as iOS insets them */
+.utp .utp-file + .utp-file .utp-file__text {
+  box-shadow: inset 0 0.5px 0 #c6c6c8;
+}
+
+/* A file the input won't take is shown, but dimmed */
+.utp .utp-file[data-disabled] {
+  opacity: 0.4;
+}
+
+.utp .utp-file__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  align-self: stretch;
+  gap: 2px;
+  min-width: 0;
+}
+
+.utp .utp-file__name {
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.utp .utp-file__meta {
+  color: rgb(60 60 67 / 0.6);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.utp .utp-doc {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 46px;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.16),
+    0 2px 6px -2px rgb(0 0 0 / 0.22);
+  clip-path: polygon(0 0, 70% 0, 100% 23%, 100% 100%, 0 100%);
+  margin: 0 2px;
+}
+
+.utp .utp-doc::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 30%;
+  height: 23%;
+  background: linear-gradient(225deg, transparent 50%, #e4e4e7 50%);
+}
+
+.utp .utp-doc__band {
+  position: absolute;
+  right: 0;
+  bottom: 8px;
+  left: 0;
+  padding: 1px 0;
+  background: #16a34a;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 12px;
+  text-align: center;
+}
+
+.utp .utp-doc[data-kind="pdf"] .utp-doc__band {
+  background: #dc2626;
+}
+
+/* A photo's thumbnail */
+.utp .utp-thumb {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  background: linear-gradient(160deg, #93c5fd 0%, #60a5fa 45%, #4d7c0f 46%, #65a30d 100%);
+}
+
+/* ---- The keyboard and the toolbar riding on it ---- */
+
+.utp .utp-dock {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  /* iOS blurs what's under the keyboard; a solid backing keeps rows from ghosting through its sheet */
+  background: #fff;
+  /* A lasting layer, so the toolbar's text and icons land without a hop */
+  will-change: transform;
+  transform: translateY(100%);
+  /* Hidden once it's off the screen, not just moved */
+  visibility: hidden;
+  transition:
+    transform 0.42s var(--utp-ui),
+    visibility 0s linear 0.42s;
+}
+
+.utp .utp-dock[data-open] {
+  transform: none;
+  visibility: visible;
+  transition:
+    transform 0.42s var(--utp-ui),
+    visibility 0s;
+}
+
+.utp .utp-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* 6pt in from each side: the toolbar's ends line up with the keyboard's keys */
+  padding: 8px 6px;
+  border-top: 0.5px solid #d4d4d8;
+  background: #fff;
+}
+
+.utp .utp-tool,
+.utp .utp-done {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background-color 0.12s ease,
+    opacity 0.2s ease;
+}
+
+.utp .utp-tool {
+  background: var(--utp-muted);
+  color: var(--utp-fg);
+}
+
+/* Whole, even widths, so every icon sits on a whole pixel as the dock lands */
+.utp .utp-tool[data-target="tool-outdent"] {
+  width: 102px;
+}
+.utp .utp-tool[data-target="tool-indent"] {
+  width: 90px;
+}
+.utp .utp-tool--icon {
+  width: 40px;
+  justify-content: center;
+  padding: 0;
+}
+
+/* Destructive, as iOS colors it */
+.utp .utp-tool--delete svg {
+  color: #dc2626;
+}
+.utp .utp-done {
+  width: 64px;
+  justify-content: center;
+}
+
+.utp .utp-tool svg {
+  flex: none;
+  color: var(--utp-icon);
+}
+
+.utp .utp-tool[data-pressed] {
+  background: #e5e5e5;
+}
+
+.utp .utp-tool[data-disabled] {
+  opacity: 0.4;
+}
+
+.utp .utp-done {
+  margin-left: auto;
+  background: var(--utp-fg);
+  color: #fff;
+}
+
+.utp .utp-done[data-pressed] {
+  background: #262626;
+}
+
+/* The approved editor header. Only the NEW layer gets these controls.
+   Its 32px buttons straddle the original 20px head, preserving the label's
+   baseline and the body's position through the wipe. */
+.utp .utp-head--new {
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin-top: -6px;
+  margin-bottom: 6px;
+  padding-right: 0;
+}
+
+.utp .utp-heading {
+  display: inline-flex;
+  flex: none;
+  align-items: baseline;
+  gap: 8px;
+  height: 20px;
+}
+
+.utp .utp-head-actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 32px;
+  margin-left: auto;
+}
+
+.utp .utp-paths-control {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--utp-muted-fg);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.utp .utp-paths-label {
+  width: 32px;
+}
+
+.utp .utp-paths-control .ss-toggle[data-on] {
+  background: var(--utp-fg);
+}
+
+.utp .utp-head-divider {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--utp-border);
+}
+
+.utp .utp-head-icons {
+  display: inline-flex;
+  flex: none;
+}
+
+.utp .utp-head-button {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: var(--utp-icon);
+  transition: background-color 0.15s ease;
+}
+
+.utp .utp-head-button[data-hover] {
+  background: var(--utp-muted);
+}
+
+.utp .utp-head-button svg {
+  display: block;
+  flex: none;
+}
+
+/* Last beat: the finger moves vertically; level changes are explicit buttons. */
+.utp .utp-rows {
+  position: relative;
+}
+
+.utp .utp-rows[data-moving] .utp-row {
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    transform 220ms var(--utp-ui),
+    margin-left 220ms var(--utp-ui),
+    margin-right 220ms var(--utp-ui),
+    height 280ms var(--utp-ui),
+    scale 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.utp .utp-rows[data-moving] .utp-row[data-target="row-contact"] {
+  z-index: 2;
+}
+
+.utp .utp-rows[data-moving] .utp-row[data-lifted] {
+  background: #fff;
+  scale: 1.03;
+  box-shadow:
+    inset 0 0 0 1px #0a0a0a,
+    0 8px 20px -6px rgb(0 0 0 / 0.22);
+  transition:
+    scale 200ms ease,
+    box-shadow 200ms ease,
+    margin-right 200ms ease;
+}
+
+.utp .utp-row[data-selected] {
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px #0a0a0a;
+}
+
+.utp .utp-hold-ring {
+  position: absolute;
+  top: 8px;
+  right: 24px;
+  pointer-events: none;
+  opacity: 0;
+  transform: rotate(-90deg);
+}
+
+.utp .utp-hold-ring circle {
+  fill: none;
+  stroke-width: 2;
+}
+
+.utp .utp-hold-track {
+  stroke: #e5e7eb;
+}
+.utp .utp-hold-progress {
+  stroke: #2563eb;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+
+.utp .utp-row[data-holding] .utp-hold-ring {
+  opacity: 1;
+}
+
+.utp .utp-row[data-holding] .utp-hold-progress {
+  animation: utp-hold-fill 450ms linear forwards;
+}
+
+@keyframes utp-hold-fill {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.utp .utp-insertion {
+  position: absolute;
+  z-index: 1;
+  top: 220px;
+  left: 48px;
+  right: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: #2563eb;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.utp .utp-insertion[data-show] {
+  opacity: 1;
+}
+
+/* The full device extends below the illustration. This is the visible
+   viewport's bottom safe inset, not a second home indicator. */
+.utp .utp-move-dock {
+  position: absolute;
+  top: 594px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 6;
+  background: #fff;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(16px);
+  transition:
+    opacity 200ms ease,
+    transform 280ms var(--utp-ui),
+    visibility 0s linear 280ms;
+}
+
+.utp .ss-stage[data-layout="compact"] .utp-move-dock {
+  top: 592px;
+}
+
+.utp .utp-move-dock[data-open] {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+
+.utp .utp-move-dock .utp-tool,
+.utp .utp-move-dock .utp-done {
+  height: 44px;
+}
+
+.utp .utp-tool[data-target="move-outdent"] {
+  width: 102px;
+}
+.utp .utp-tool[data-target="move-indent"] {
+  width: 90px;
+}
+.utp .utp-tool[data-target="move-undo"] {
+  width: 80px;
+}
+
+.utp .utp-hold-ring {
+  transition: opacity 100ms ease;
+}
+.utp .utp-move-dock {
+  will-change: transform;
+}
+
+/* Sonner's mobile layout, above the visible viewport's bottom inset.
+   The move bar has finished closing before this toast enters. */
+.utp .utp-toaster {
+  position: absolute;
+  z-index: 7;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 656px;
+  pointer-events: none;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif;
+}
+
+.utp .utp-move-toast {
+  position: absolute;
+  right: 16px;
+  bottom: 20px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid hsl(0 0% 89.8%);
+  border-radius: 8px;
+  background: #fff;
+  color: hsl(0 0% 3.9%);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  font-size: 13px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(16px);
+  transition:
+    opacity 400ms ease,
+    transform 400ms ease,
+    visibility 0s linear 400ms;
+  will-change: transform;
+}
+
+.utp .utp-move-toast[data-show] {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+
+.utp .utp-toast-title {
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.utp .utp-toast-undo {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: auto;
+  background: hsl(0 0% 9%);
+  color: hsl(0 0% 98%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .utp .utp-move-toast {
+    transform: none;
+    transition: none;
+  }
+}
