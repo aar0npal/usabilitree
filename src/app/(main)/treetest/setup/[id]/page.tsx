@@ -10,10 +10,9 @@ interface SetupPageProps {
   params: {
     id: string;
   };
-  searchParams: { [key: string]: string | string[] | undefined };
 }
 
-export default async function SetupPage({ params, searchParams }: SetupPageProps) {
+export default async function SetupPage({ params }: SetupPageProps) {
   const user = await getCurrentUser();
   if (!user) {
     redirect(Paths.Login);
@@ -25,7 +24,5 @@ export default async function SetupPage({ params, searchParams }: SetupPageProps
     notFound();
   }
 
-  const showTour = searchParams.onboarding === "1";
-
-  return <SetupTabs params={params} showTour={showTour} />;
+  return <SetupTabs params={params} />;
 }

@@ -28,7 +28,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { updateStudyStatus, deleteStudy, getStudyDetails } from "@/lib/treetest/actions";
 import { OverviewTab } from "./overview-tab";
@@ -38,7 +38,6 @@ import { ParticipantsTab } from "./participants-tab";
 import { ExportTab } from "./export-tab";
 import * as Sentry from "@sentry/react";
 import { PencilIcon } from "lucide-react";
-import TourResults from "./results-tour";
 import { RESULTS_TOUR_STEP_IDS } from "@/lib/constants";
 
 interface ResultTabsProps {
@@ -47,24 +46,14 @@ interface ResultTabsProps {
   };
   userEmail: string;
   isOwner: boolean;
-  showTour: boolean;
-  highlightEdit: boolean;
 }
 
-export default function ResultTabs({
-  params,
-  userEmail,
-  isOwner,
-  showTour,
-  highlightEdit,
-}: ResultTabsProps) {
+export default function ResultTabs({ params, userEmail, isOwner }: ResultTabsProps) {
   const router = useRouter();
   const [title, setTitle] = useState("Study Results");
   const [activeTab, setActiveTab] = useState("overview");
   const [isFinishing, setIsFinishing] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [isTourCompletedInStorage, setIsTourCompletedInStorage] = useState(false);
-  const tasksTabOpenerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     getStudyDetails(params.id)
@@ -74,12 +63,6 @@ export default function ResultTabs({
       })
       .catch(Sentry.captureException);
   }, [params.id]);
-
-  // Check localStorage for tour completion status
-  useEffect(() => {
-    const tourCompleted = localStorage.getItem("results-tour-completed");
-    setIsTourCompletedInStorage(tourCompleted === "true");
-  }, []);
 
   const handleCopyLink = async () => {
     const link = `${window.location.origin}/treetest/${params.id}`;
@@ -125,47 +108,8 @@ export default function ResultTabs({
     }
   };
 
-  // Handle tour completion
-  const handleTourComplete = () => {
-    localStorage.setItem("results-tour-completed", "true");
-    setIsTourCompletedInStorage(true);
-  };
-
-  // Memoize the tour actions to prevent infinite update loops
-  const tourActions = useMemo(
-    () => ({
-      [RESULTS_TOUR_STEP_IDS.OVERVIEW]: () => setActiveTab("overview"),
-      [RESULTS_TOUR_STEP_IDS.PARTICIPANTS]: () => setActiveTab("participants"),
-      [RESULTS_TOUR_STEP_IDS.TASKS]: () => setActiveTab("tasks"),
-      [RESULTS_TOUR_STEP_IDS.SHARING]: () => setActiveTab("sharing"),
-      [RESULTS_TOUR_STEP_IDS.EXPORT]: () => setActiveTab("export"),
-      // For buttons, these don't actually change the tab, just ensure we're on the right tab
-      [RESULTS_TOUR_STEP_IDS.TASKS_EXPAND]: () => {
-        setActiveTab("tasks");
-      },
-      [RESULTS_TOUR_STEP_IDS.SHARING_QUICK_ACTION]: () => {
-        // No tab change, just ensure we're on the sharing tab
-        setActiveTab("sharing");
-      },
-      [RESULTS_TOUR_STEP_IDS.EDIT]: () => {
-        // No tab change, just ensure we're on the overview tab
-        setActiveTab("overview");
-      },
-      // Special action to open the first task accordion
-      openFirstTask: () => {
-        if (tasksTabOpenerRef.current) {
-          tasksTabOpenerRef.current();
-        }
-      },
-    }),
-    []
-  );
-
   return (
     <main className="container min-h-[calc(100vh-160px)] pt-3 md:max-w-screen-md">
-      {showTour && !isTourCompletedInStorage && (
-        <TourResults actions={tourActions} onComplete={handleTourComplete} />
-      )}
       <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <Link
@@ -241,16 +185,8 @@ export default function ResultTabs({
                 Study completed
               </div>
             )}
-            <Link
-              href={`/treetest/setup/${params.id}` + (showTour ? "?onboarding=1" : "")}
-              id={RESULTS_TOUR_STEP_IDS.EDIT}
-              className={highlightEdit ? "relative" : ""}
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                className={`gap-2 ${highlightEdit ? "border-blue-400/60 shadow-md shadow-blue-400/20" : ""}`}
-              >
+            <Link href={`/treetest/setup/${params.id}`} id={RESULTS_TOUR_STEP_IDS.EDIT}>
+              <Button variant="outline" size="sm" className="gap-2">
                 <PencilIcon className="h-4 w-4" /> Edit
               </Button>
             </Link>
@@ -328,13 +264,7 @@ export default function ResultTabs({
         </TabsContent>
 
         <TabsContent value="tasks">
-          <TasksTab
-            studyId={params.id}
-            isOwner={isOwner}
-            onSetOpener={(opener) => {
-              tasksTabOpenerRef.current = opener;
-            }}
-          />
+          <TasksTab studyId={params.id} isOwner={isOwner} />
         </TabsContent>
 
         <TabsContent value="sharing">
