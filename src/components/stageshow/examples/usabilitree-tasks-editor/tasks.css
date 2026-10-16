@@ -1,0 +1,705 @@
+/* UsabiliTree v1 tokens (shadcn neutral + the preview's Tailwind grays) */
+.utk .ss-stage {
+  --utk-fg: #0a0a0a;
+  --utk-muted: #f5f5f5;
+  --utk-muted-fg: #737373;
+  --utk-border: #e5e5e5;
+  --utk-leaf: #f9fafb;
+  --utk-parent: #f3f4f6;
+  --utk-row-text: #111827;
+  --utk-icon: #4b5563;
+  /* shadcn's Switch: black when on */
+  --ss-accent: #0a0a0a;
+  overflow: hidden;
+  background: var(--ss-well);
+}
+
+/* One browser window, inset top and sides, fading out at its foot */
+.utk .utk-mask {
+  position: absolute;
+  inset: 0;
+  padding: 36px 36px 0;
+  mask-image: linear-gradient(to bottom, #000 78%, transparent 99%);
+}
+
+.utk .ss-stage[data-layout="compact"] .utk-mask {
+  padding: 16px 16px 0;
+  mask-image: linear-gradient(to bottom, #000 80%, transparent 99%);
+}
+
+.utk .utk-win {
+  width: 100%;
+}
+
+.utk .utk-body {
+  min-height: 560px;
+  padding: 20px 24px 0;
+  background: #fff;
+  color: var(--utk-fg);
+  font-size: 14px;
+}
+
+.utk .ss-stage[data-layout="compact"] .utk-body {
+  padding: 16px 16px 0;
+}
+
+/* ---- The tabs: shadcn TabsList, Tasks active ---- */
+
+.utk .utk-tabs {
+  display: flex;
+  gap: 18px;
+  height: 36px;
+  padding: 4px 12px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  background: var(--utk-muted);
+}
+
+.utk .utk-tab {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--utk-muted-fg);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.utk .utk-tab svg {
+  flex: none;
+}
+
+.utk .utk-tab[data-active] {
+  color: var(--utk-fg);
+}
+
+.utk .utk-tab[data-active]::before {
+  content: "";
+  position: absolute;
+  inset: 0 -8px;
+  z-index: -1;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+/* shadcn's Badge at text-xs's smaller step. One width for Old and New, so nothing on the label's line shifts as they swap */
+.utk .utk-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--utk-fg);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* The secondary variant: today's version, named but not shouted */
+.utk .utk-badge[data-old] {
+  background: #e4e4e7;
+  color: #52525b;
+}
+
+/* ---- The swap: each version a whole layer, the new one wiped in over the old ---- */
+
+.utk .utk-swap {
+  position: relative;
+  display: grid;
+}
+
+.utk .utk-swap > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/* Its last sliver fades as the line reaches the left edge, then it's out of the tree */
+.utk .utk-swap[data-version="new"] .utk-old {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.15s linear 0.95s,
+    visibility 0s linear 1.1s;
+}
+
+.utk .utk-new {
+  background: #fff;
+  clip-path: inset(0 0 0 100%);
+  transition: clip-path 1.1s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.utk .utk-swap[data-version="new"] .utk-new {
+  clip-path: inset(0);
+}
+
+.utk .utk-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transform: translateX(100%);
+  visibility: hidden;
+}
+
+.utk .utk-swap[data-version="new"] .utk-wipe {
+  transform: none;
+  visibility: visible;
+  transition: transform 1.1s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.utk .utk-wipe__line {
+  position: absolute;
+  top: -6px;
+  bottom: 0;
+  left: -1px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--utk-fg);
+  opacity: 0;
+}
+
+.utk .utk-swap[data-version="new"] .utk-wipe__line {
+  animation: utk-wipe-line 1.1s linear both;
+}
+
+@keyframes utk-wipe-line {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .utk .utk-wipe {
+    display: none;
+  }
+}
+
+/* ---- v1's Tasks tab ---- */
+
+.utk .utk-v1 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.utk .utk-v1-card {
+  padding: 16px;
+  border: 1px solid var(--utk-border);
+  border-radius: 8px;
+}
+
+.utk .utk-v1-setting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+}
+
+.utk .utk-v1-setting__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.utk .utk-v1-small {
+  color: var(--utk-muted-fg);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.utk .utk-v1-task {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.utk .utk-v1-task__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.utk .utk-v1-task__title {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.utk .utk-v1-trash {
+  color: #dc2626;
+}
+
+.utk .utk-v1-label {
+  color: var(--utk-muted-fg);
+  font-weight: 500;
+}
+
+.utk .utk-v1-input,
+.utk .utk-v1-textarea {
+  padding: 7px 12px;
+  border: 1px solid var(--utk-border);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.utk .utk-v1-textarea {
+  min-height: 60px;
+}
+
+/* v1's placeholder, in its muted gray */
+.utk .utk-v1-textarea--empty {
+  color: var(--utk-muted-fg);
+}
+
+.utk .utk-v1-answer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+/* v1's Button, outline variant, small */
+.utk .utk-v1-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--utk-border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ---- The redesign ---- */
+
+/* The label, its badge centered on the line, then (wide) the settings at the far end, as the Tree tab's header */
+.utk .utk-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 20px;
+  padding: 0 2px;
+  margin-bottom: 14px;
+}
+
+.utk .utk-old .utk-head {
+  margin-bottom: 16px;
+}
+
+.utk .utk-label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.utk .utk-settings {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+}
+
+.utk .utk-setting {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--utk-muted-fg);
+  font-size: 13px;
+}
+
+/* A task: its number, the question as text that edits in place, its answers under the question */
+.utk .utk-task {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 16px;
+  column-gap: 12px;
+  row-gap: 10px;
+  align-items: center;
+  padding: 14px 14px 14px 12px;
+  border: 1px solid var(--utk-border);
+  border-radius: 8px;
+}
+
+.utk .utk-gap {
+  padding-top: 10px;
+}
+
+.utk .utk-task__n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--utk-muted);
+  color: #525252;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.utk .utk-task__q {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+/* The question being written: the app's 1px ring around it, its text where it was */
+.utk .utk-task__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  margin: -4px -8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: box-shadow 0.15s ease;
+}
+
+.utk .utk-task__field[data-focused] {
+  box-shadow: inset 0 0 0 1px var(--utk-fg);
+}
+
+.utk .utk-caret {
+  width: 1.5px;
+  height: 17px;
+  margin-left: 1px;
+  margin-right: -2.5px;
+  background: var(--utk-fg);
+  animation: ss-caret 1.06s steps(1) 0.5s infinite;
+}
+
+.utk .utk-placeholder {
+  position: absolute;
+  left: 8px;
+  color: #a3a3a3;
+  font-weight: 400;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.utk .utk-placeholder[data-show] {
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.utk .utk-task__trash {
+  color: #a3a3a3;
+}
+
+.utk .utk-answers {
+  grid-column: 2 / 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+/* A correct answer: the item, and where it sits; the path is what's stored */
+.utk .utk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.utk .utk-chip svg {
+  flex: none;
+  color: #16a34a;
+}
+
+.utk .utk-chip__name {
+  font-weight: 500;
+}
+
+.utk .utk-chip__trail {
+  color: #15803d;
+  opacity: 0.75;
+}
+
+/* Its width opens from nothing, so what's after it slides along */
+.utk .utk-chip-slot {
+  display: inline-grid;
+  grid-template-columns: 0fr;
+  margin-right: -8px;
+  opacity: 0;
+  transition:
+    grid-template-columns 0.32s cubic-bezier(0.25, 0.8, 0.25, 1),
+    margin-right 0.32s cubic-bezier(0.25, 0.8, 0.25, 1),
+    /* Faint until its slot has opened past it, so its words are never seen sliced */ opacity 0.18s
+      ease 0.24s;
+}
+
+.utk .utk-chip-slot[data-open] {
+  grid-template-columns: 1fr;
+  margin-right: 0;
+  opacity: 1;
+}
+
+.utk .utk-chip-slot__inner {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* v1's Button, ghost, small */
+.utk .utk-add-answer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--utk-muted-fg);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.12s ease;
+}
+
+.utk .utk-add-answer[data-hover],
+.utk .utk-add-answer[data-pressed] {
+  background: var(--utk-muted);
+  color: var(--utk-fg);
+}
+
+/* v1's Button, outline */
+.utk .utk-add-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  margin-top: 12px;
+  border: 1px solid var(--utk-border);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  font-size: 14px;
+  font-weight: 500;
+  /* A lasting layer, so it glides whole as Task 2 opens above it */
+  will-change: transform;
+  transition: background-color 0.12s ease;
+}
+
+.utk .utk-add-task[data-pressed] {
+  background: var(--utk-muted);
+}
+
+/* ---- The tree as a picker ---- */
+
+.utk .ss-popover.utk-picker {
+  position: absolute;
+  z-index: 20;
+  padding: 6px;
+  border: 1px solid var(--utk-border);
+  border-radius: 10px;
+  --ss-popover-bg: #fff;
+  --ss-popover-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.18), 0 2px 6px rgb(0 0 0 / 0.06);
+}
+
+.utk .utk-picker__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.utk .utk-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.utk .utk-done {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: var(--utk-fg);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.utk .utk-done[data-pressed] {
+  background: #262626;
+}
+
+/* The Tree tab's rows, smaller: gray parents, leaves to pick. Indented by
+   margin, so each row's highlight keeps one inset at both ends */
+.utk .utk-option {
+  display: flex;
+  align-items: center;
+  /* A top-level name lands on the search field's text edge */
+  gap: 7px;
+  height: 30px;
+  margin-top: 2px;
+  padding: 0 12px;
+  border-radius: 6px;
+  color: var(--utk-row-text);
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.utk .utk-option[data-parent] {
+  color: var(--utk-muted-fg);
+}
+
+.utk .utk-option {
+  transition:
+    background-color 0.15s ease,
+    opacity 0.2s ease;
+}
+
+/* Not a match: faded back, still in its place */
+.utk .utk-option[data-dim] {
+  opacity: 0.32;
+}
+
+.utk .utk-option__chevron {
+  flex: none;
+  color: #a3a3a3;
+}
+
+.utk .utk-option__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.utk .utk-option__name b {
+  font-weight: 600;
+}
+
+.utk .utk-option[data-hover]:not([data-parent]) {
+  background: var(--utk-muted);
+}
+
+.utk .utk-option[data-picked] {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.utk .utk-option__check {
+  flex: none;
+  color: #16a34a;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 0.15s ease,
+    transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.utk .utk-option[data-picked] .utk-option__check {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- At column width ---- */
+
+/* A chip names the item only, so it fits beside Add answer */
+.utk .ss-stage[data-layout="compact"] .utk-chip__trail {
+  display: none;
+}
+
+/* The picker over the task: shorter rows, so it closes a gutter above the stage's foot,
+   and a deeper foot, so its last row sits as far from the edge as its text from the side */
+.utk .ss-stage[data-layout="compact"] .utk-option {
+  height: 26px;
+  margin-top: 0;
+}
+
+.utk .ss-stage[data-layout="compact"] .ss-popover.utk-picker {
+  padding-bottom: 10px;
+}
+
+/* Last beat: a draft task's number is its mouse handle. */
+.utk .utk-task-list {
+  position: relative;
+}
+.utk .utk-task {
+  position: relative;
+  background: #fff;
+  will-change: transform;
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 180ms ease;
+}
+.utk .utk-task[data-displaced] {
+  transform: translateY(var(--utk-down));
+}
+.utk .utk-task[data-reordered] {
+  transform: translateY(calc(-1 * var(--utk-up)));
+}
+.utk .utk-task[data-lifted] {
+  z-index: 3;
+  transform: translateY(var(--utk-drag-y)) scale(1.02);
+  transform-origin: 24px 26px;
+  box-shadow:
+    0 8px 20px rgb(0 0 0 / 0.12),
+    0 2px 4px rgb(0 0 0 / 0.06);
+  transition: box-shadow 180ms ease;
+}
+.utk .utk-task__handle {
+  position: relative;
+}
+.utk .utk-task__digit {
+  transition: opacity 140ms ease;
+}
+.utk .utk-task__handle > svg {
+  position: absolute;
+  inset: 4px;
+  color: #737373;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.utk .utk-task__handle[data-grip] .utk-task__digit {
+  opacity: 0;
+}
+.utk .utk-task__handle[data-grip] > svg {
+  opacity: 1;
+}
+.utk .utk-insertion {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: #2563eb;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.utk .utk-insertion[data-show] {
+  opacity: 1;
+}
+
+.utk .utk-swap[data-version="new"] .utk-new[data-reordering] {
+  clip-path: inset(-16px);
+  transition: none;
+}
