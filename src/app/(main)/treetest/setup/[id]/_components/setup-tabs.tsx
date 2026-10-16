@@ -41,21 +41,19 @@ import { TreeTab } from "./tree-tab";
 import { TasksTab } from "./tasks-tab";
 import { MessagesTab } from "./messages-tab";
 import { StudyFormData } from "@/lib/types/tree-test";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import * as Sentry from "@sentry/react";
 import { TriangleAlertIcon } from "lucide-react";
-import TourSetup from "./setup-tour";
 import { SETUP_TOUR_STEP_IDS } from "@/lib/constants";
 
 interface SetupTabsProps {
   params: {
     id: string;
   };
-  showTour?: boolean;
 }
 
-export default function SetupTabs({ params, showTour = false }: SetupTabsProps) {
+export default function SetupTabs({ params }: SetupTabsProps) {
   const router = useRouter();
   const [formData, setFormData] = useState<StudyFormData>({
     general: {
@@ -99,7 +97,6 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [status, setStatus] = useState("draft");
   const [activeTab, setActiveTab] = useState("general");
-  const [isTourCompletedInStorage, setIsTourCompletedInStorage] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -136,37 +133,6 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
   useEffect(() => {
     setHasUnsavedChanges(true);
   }, [formData]);
-
-  // Check localStorage for tour completion status
-  useEffect(() => {
-    const tourCompleted = localStorage.getItem("setup-tour-completed");
-    setIsTourCompletedInStorage(tourCompleted === "true");
-  }, []);
-
-  // Handle tour completion
-  const handleTourComplete = () => {
-    localStorage.setItem("setup-tour-completed", "true");
-    setIsTourCompletedInStorage(true);
-  };
-
-  // Only show tour if explicitly requested and not completed
-  const shouldShowTour = showTour && !isTourCompletedInStorage;
-
-  // Memoize the tour actions to prevent infinite update loops
-  const tourActions = useMemo(
-    () => ({
-      [SETUP_TOUR_STEP_IDS.GENERAL]: () => setActiveTab("general"),
-      [SETUP_TOUR_STEP_IDS.TREE]: () => setActiveTab("tree"),
-      [SETUP_TOUR_STEP_IDS.TASKS]: () => setActiveTab("tasks"),
-      [SETUP_TOUR_STEP_IDS.MESSAGES]: () => setActiveTab("messages"),
-      // For buttons, these don't change tabs but are used for highlighting
-      [SETUP_TOUR_STEP_IDS.SAVE]: () => {},
-      [SETUP_TOUR_STEP_IDS.PREVIEW]: () => {},
-      [SETUP_TOUR_STEP_IDS.RESULTS]: () => {},
-      [SETUP_TOUR_STEP_IDS.DELETE]: () => {},
-    }),
-    []
-  );
 
   const getValidationErrors = () => {
     const errors = [];
@@ -345,7 +311,6 @@ export default function SetupTabs({ params, showTour = false }: SetupTabsProps) 
 
   return (
     <main className="container min-h-[calc(100vh-160px)] pt-3 md:max-w-screen-md">
-      {shouldShowTour && <TourSetup actions={tourActions} onComplete={handleTourComplete} />}
       <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <button

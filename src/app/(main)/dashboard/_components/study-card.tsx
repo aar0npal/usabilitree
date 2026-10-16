@@ -28,15 +28,8 @@ export const StudyCard = ({ study, userName, isOwner }: StudyCardProps) => {
     study.status === "active" &&
     isOwner;
 
-  const getResultsUrl = () => {
-    if (isSampleStudy) return `/treetest/results/${study.id}?edit=1`;
-    return `/treetest/results/${study.id}`;
-  };
-
-  const getEditUrl = () => {
-    if (isSampleStudy) return `/treetest/setup/${study.id}?onboarding=1`;
-    return `/treetest/setup/${study.id}`;
-  };
+  const resultsUrl = `/treetest/results/${study.id}`;
+  const editUrl = `/treetest/setup/${study.id}`;
 
   const handleLinkClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -46,22 +39,22 @@ export const StudyCard = ({ study, userName, isOwner }: StudyCardProps) => {
 
   const handleCardClick = () => {
     if (study.status === "draft") {
-      if (isOwner) window.location.href = getEditUrl();
+      if (isOwner) window.location.href = editUrl;
     } else {
-      window.location.href = getResultsUrl();
+      window.location.href = resultsUrl;
     }
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    window.location.href = getEditUrl();
+    window.location.href = editUrl;
   };
 
   const handleResultsClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    window.location.href = getResultsUrl();
+    window.location.href = resultsUrl;
   };
 
   return (

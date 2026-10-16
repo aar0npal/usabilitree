@@ -7,13 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import ResultTabs from "./_components/result-tabs";
 
-export default async function Page({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
+export default async function Page({ params }: { params: { id: string } }) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -36,20 +30,10 @@ export default async function Page({
     );
 
   const hasAccess = isOwner || !!collaborator; //|| user.id === "UI9uuzgSHHs0Xa46KZCHB";
-  const showTour = searchParams.onboarding === "1" && hasAccess;
-  const highlightEdit = searchParams.edit === "1" && hasAccess;
 
   if (!hasAccess) {
     notFound();
   }
 
-  return (
-    <ResultTabs
-      params={params}
-      userEmail={user.email}
-      isOwner={isOwner}
-      showTour={showTour}
-      highlightEdit={highlightEdit}
-    />
-  );
+  return <ResultTabs params={params} userEmail={user.email} isOwner={isOwner} />;
 }

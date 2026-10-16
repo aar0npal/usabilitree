@@ -1,135 +1,96 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { DASHBOARD_TOUR_STEP_IDS } from "@/lib/constants";
 import { TourAlertDialog, TourStep, useTour } from "@/components/tour";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
-function TourContent({ title, description }: { title: string; description: string }) {
-  return (
-    <div>
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <p className="text-sm text-muted-foreground">{description}</p>
-    </div>
-  );
-}
+const steps: TourStep[] = [
+  {
+    content: (
+      <div>
+        <h2 className="pr-10 text-lg font-semibold">Sample study</h2>
+        <p className="text-sm text-muted-foreground">
+          Explore this sample study to see how tree testing works. When you no longer need it,
+          delete it from its setup or results page to free up a study slot.
+        </p>
+      </div>
+    ),
+    selectorId: DASHBOARD_TOUR_STEP_IDS.SAMPLE_STUDY,
+    position: "bottom",
+  },
+  {
+    content: (
+      <div>
+        <h2 className="pr-10 text-lg font-semibold">Recent updates</h2>
+        <p className="text-sm text-muted-foreground">
+          Find product updates and development news here.
+        </p>
+      </div>
+    ),
+    selectorId: DASHBOARD_TOUR_STEP_IDS.UPDATES,
+    position: "bottom",
+  },
+];
 
 export default function TourDashboard() {
   const router = useRouter();
   const [openTour, setOpenTour] = useState(false);
-  const [hasShownTour, setHasShownTour] = useState(false);
-  const [isTourCompletedInStorage, setIsTourCompletedInStorage] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 767px)"); // Tailwind's md breakpoint
-  const { setSteps } = useTour();
+  const { setSteps, setIsTourCompleted, endTour } = useTour();
 
-  // Check localStorage for tour completion status
-  useEffect(() => {
-    const tourCompleted = localStorage.getItem("dashboard-tour-completed");
-    setIsTourCompletedInStorage(tourCompleted === "true");
-  }, []);
-
-  const steps: TourStep[] = useMemo(
-    () => [
-      {
-        content: (
-          <TourContent
-            title="Sample Study"
-            description="Take a look at this sample active study and get onboarded on how tree testing works in this platform."
-          />
-        ),
-        selectorId: DASHBOARD_TOUR_STEP_IDS.SAMPLE_STUDY,
-        position: isMobile ? "top" : "bottom",
-        onClickWithinArea: () => {},
-      },
-      {
-        content: (
-          <TourContent
-            title="Recent Updates"
-            description="Check recent updates and development messages here."
-          />
-        ),
-        selectorId: DASHBOARD_TOUR_STEP_IDS.UPDATES,
-        position: isMobile ? "bottom" : "right", // Change to bottom on mobile
-        onClickWithinArea: () => {},
-      },
-      {
-        content: (
-          <TourContent
-            title="Got any questions?"
-            description="Send your complaints, feedback, or feature requests here. This will help me improve this tool!"
-          />
-        ),
-        selectorId: DASHBOARD_TOUR_STEP_IDS.FEEDBACK + (isMobile ? "-mob" : ""),
-        position: isMobile ? "bottom" : "right", // Change to bottom on mobile
-        onClickWithinArea: () => {},
-      },
-      {
-        content: (
-          <TourContent
-            title="Feeling generous?"
-            description="If this tool helped you, consider buying me a coffee to support the development!"
-          />
-        ),
-        selectorId: DASHBOARD_TOUR_STEP_IDS.SUPPORT + (isMobile ? "-mob" : ""),
-        position: isMobile ? "bottom" : "right", // Change to bottom on mobile
-        onClickWithinArea: () => {},
-      },
-    ],
-    [isMobile]
-  );
-
-  // Remove onboarding parameter from URL
   const removeOnboardingParam = useCallback(() => {
     const url = new URL(window.location.href);
     url.searchParams.delete("onboarding");
-    router.replace(url.pathname + url.search, { scroll: false });
+    router.replace(url.pathname + url.search + url.hash, { scroll: false });
   }, [router]);
 
-  // Handle tour completion
   const handleTourComplete = useCallback(() => {
-    localStorage.setItem("dashboard-tour-completed", "true");
-    setIsTourCompletedInStorage(true);
+    try {
+      localStorage.setItem("dashboard-tour-completed", "true");
+    } catch {
+      // Dismissal still works when browser storage is unavailable.
+    }
+    setOpenTour(false);
+    endTour();
     removeOnboardingParam();
-  }, [removeOnboardingParam]);
-
-  // Handle tour skip
-  const handleTourSkip = useCallback(() => {
-    localStorage.setItem("dashboard-tour-completed", "true");
-    setIsTourCompletedInStorage(true);
-    removeOnboardingParam();
-  }, [removeOnboardingParam]);
+  }, [endTour, removeOnboardingParam]);
 
   useEffect(() => {
-    setSteps(steps);
-    // Only show tour if not completed in localStorage
-    if (!isTourCompletedInStorage) {
-      const timer = setTimeout(() => {
-        setOpenTour(true);
-        setHasShownTour(true);
-      }, 100);
-
-      return () => clearTimeout(timer);
+    let completed = false;
+    try {
+      completed = localStorage.getItem("dashboard-tour-completed") === "true";
+    } catch {
+      // The welcome screen can still be used without browser storage.
     }
-  }, [setSteps, steps, isTourCompletedInStorage]);
-
-  // Handle when tour dialog is closed (either by skip or start)
-  useEffect(() => {
-    if (!openTour && hasShownTour && !isTourCompletedInStorage) {
-      // This means the dialog was closed after being shown, so we should handle the skip case
-      const timer = setTimeout(() => {
-        handleTourSkip();
-      }, 100);
-      return () => clearTimeout(timer);
+    if (completed) {
+      removeOnboardingParam();
+      return;
     }
-  }, [openTour, hasShownTour, isTourCompletedInStorage, handleTourSkip]);
 
-  // Don't render tour if it's been completed
-  if (isTourCompletedInStorage) {
-    return null;
-  }
+    // Studies have loaded, but the sample may have been deleted or renamed.
+    const availableSteps = steps.filter((step) => document.getElementById(step.selectorId));
+    if (availableSteps.length === 0) {
+      removeOnboardingParam();
+      return;
+    }
+    setIsTourCompleted(false);
+    setSteps(availableSteps);
+    setOpenTour(true);
+
+    return endTour;
+  }, [setSteps, setIsTourCompleted, endTour, removeOnboardingParam]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) handleTourComplete();
+  };
+
+  if (!openTour) return null;
 
   return (
-    <TourAlertDialog isOpen={openTour} setIsOpen={setOpenTour} onComplete={handleTourComplete} />
+    <TourAlertDialog
+      isOpen={openTour}
+      setIsOpen={handleOpenChange}
+      onComplete={handleTourComplete}
+    />
   );
 }
