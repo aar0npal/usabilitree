@@ -450,9 +450,11 @@ function ConfidenceRatingsTable({ ratings }: { ratings: TaskStats["stats"]["conf
                       {breakdown.directSuccess > 0 && (
                         <div
                           className="absolute left-0 top-0 h-full bg-green-500 @container/directSuccess"
-                          style={(lastSegment === "directSuccess"
+                          style={
+                            lastSegment === "directSuccess"
                               ? { right: 0 }
-                              : { width: `${breakdown.directSuccessPercentage}%` })}
+                              : { width: `${breakdown.directSuccessPercentage}%` }
+                          }
                         >
                           {breakdown.directSuccessPercentage >= 1 && (
                             <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-medium text-white">
