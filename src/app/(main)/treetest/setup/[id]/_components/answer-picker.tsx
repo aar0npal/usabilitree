@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Drawer,
@@ -28,6 +27,8 @@ interface AnswerPickerProps {
   children: React.ReactElement;
 }
 
+type ListProps = Omit<AnswerPickerProps, "taskNumber" | "children">;
+
 /**
  * The tree, to pick a task's answers from. It opens as a popover by its
  * button, or as a drawer on a phone, where there's no room beside it. It stays
@@ -36,6 +37,8 @@ interface AnswerPickerProps {
 export function AnswerPicker({ taskNumber, children, ...list }: AnswerPickerProps) {
   const [open, setOpen] = React.useState(false);
   const wide = useMediaQuery("(min-width: 640px)");
+  const drawer = React.useRef<HTMLDivElement>(null);
+  useKeyboardFit(drawer, open && !wide);
   const done = () => setOpen(false);
 
   if (wide) {
@@ -54,9 +57,15 @@ export function AnswerPicker({ taskNumber, children, ...list }: AnswerPickerProp
   }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen} shouldScaleBackground={false}>
+    // useKeyboardFit places the drawer above the keyboard; vaul's own guess left it half off screen
+    <Drawer
+      open={open}
+      onOpenChange={setOpen}
+      shouldScaleBackground={false}
+      repositionInputs={false}
+    >
       <DrawerTrigger asChild>{children}</DrawerTrigger>
-      <DrawerContent className="h-[85dvh]">
+      <DrawerContent ref={drawer} className="h-[85dvh]">
         <DrawerHeader className="flex items-center justify-between gap-3 px-4 pb-3 pt-3 text-left">
           <DrawerTitle className="text-base">Answer for task {taskNumber}</DrawerTitle>
           <Button size="sm" className="h-9 px-4" onClick={done}>
@@ -72,6 +81,16 @@ export function AnswerPicker({ taskNumber, children, ...list }: AnswerPickerProp
   );
 }
 
+/**
+ * The search and the tree's items. Arrow keys move through the items that can
+ * be answers and Enter picks one; a finger taps them. The list fills in, and
+ * follows the search, in background renders, so a long tree never holds up
+ * the popover opening or a keystroke.
+ *
+ * Plain rows rather than cmdk: cmdk mounts slowly for hundreds of items, and
+ * scrolls its highlighted row into view with the browser's own scrolling,
+ * which on iOS with the keyboard up scrolls the whole page.
+ */
 function PickerList({
   options,
   allowParents,
@@ -79,23 +98,79 @@ function PickerList({
   onToggle,
   onDone,
   touch = false,
-}: Omit<AnswerPickerProps, "taskNumber" | "children"> & { onDone?: () => void; touch?: boolean }) {
+}: ListProps & { onDone?: () => void; touch?: boolean }) {
+  const id = React.useId();
   const [query, setQuery] = React.useState("");
-  const shown = React.useMemo(() => searchOptions(options, query), [options, query]);
-  const picked = new Set(selected);
-  const pickable = (option: AnswerOption) => !option.parent || allowParents;
-  const anyShown = options.some((option, index) => shown.has(index) && pickable(option));
+  const search = React.useDeferredValue(query);
+  // The first render shows the search alone; the items follow straight after
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    React.startTransition(() => setReady(true));
+  }, []);
+  const rows = useRows({ options, allowParents, selected }, search, ready);
+  const pickable = rows.filter((row) => row.pickable);
+  const [active, setActive] = React.useState(0);
+  const activeIndex = pickable[Math.min(active, pickable.length - 1)]?.index;
+  const list = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => setActive(0), [search]);
+  // The rows get handlers that never change, so picking or hovering one re-renders only the rows it changes
+  const latest = React.useRef({ pickable, onToggle });
+  latest.current = { pickable, onToggle };
+  const toggle = React.useCallback((path: string) => latest.current.onToggle(path), []);
+  const hover = React.useCallback((index: number) => {
+    const at = latest.current.pickable.findIndex((row) => row.index === index);
+    if (at !== -1) setActive(at);
+  }, []);
+
+  // Keeps the active row in view inside the list, never by scrolling the page
+  React.useEffect(() => {
+    const box = list.current;
+    const row = box?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`);
+    if (!box || !row || touch) return;
+    if (row.offsetTop < box.scrollTop) box.scrollTop = row.offsetTop - 4;
+    else if (row.offsetTop + row.offsetHeight > box.scrollTop + box.clientHeight)
+      box.scrollTop = row.offsetTop + row.offsetHeight - box.clientHeight + 4;
+  }, [activeIndex, touch]);
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (touch) {
+      // Search drops the keyboard, so more of the tree shows
+      if (event.key === "Enter") event.currentTarget.blur();
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (pickable.length === 0) return;
+      const by = event.key === "ArrowDown" ? 1 : -1;
+      setActive((current) => (current + by + pickable.length) % pickable.length);
+    } else if (event.key === "Enter" && activeIndex !== undefined) {
+      event.preventDefault();
+      onToggle(options[activeIndex].path);
+    }
+  };
 
   return (
-    // The list is filtered here, so a match keeps the parents above it; cmdk only moves the highlight
-    <Command shouldFilter={false} loop className="min-h-0 flex-1 rounded-none">
-      <div className="flex items-center gap-1 border-b pr-2 [&>[cmdk-input-wrapper]]:flex-1 [&>[cmdk-input-wrapper]]:border-b-0">
-        <CommandInput
-          value={query}
-          onValueChange={setQuery}
-          placeholder="Search the tree"
+    <div className={cn("flex flex-col", touch && "min-h-0 flex-1")}>
+      <div className="flex items-center gap-2 border-b pl-3 pr-2">
+        <Search className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
+        <input
+          type="search"
+          role="combobox"
+          aria-expanded
+          aria-controls={`${id}-list`}
+          aria-activedescendant={
+            !touch && activeIndex !== undefined ? `${id}-${activeIndex}` : undefined
+          }
           aria-label="Search the tree"
-          className={cn(touch && "h-11 text-base")}
+          placeholder="Search the tree"
+          enterKeyHint={touch ? "search" : undefined}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={onKeyDown}
+          className={cn(
+            "min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden",
+            touch ? "h-11 text-base" : "h-10 text-sm"
+          )}
         />
         {onDone && (
           <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2" onClick={onDone}>
@@ -104,65 +179,168 @@ function PickerList({
           </Button>
         )}
       </div>
-      <CommandList
-        className={cn("p-1", touch ? "max-h-none flex-1 pb-6" : "max-h-[min(340px,50vh)]")}
+      <div
+        ref={list}
+        id={`${id}-list`}
+        role="listbox"
+        aria-multiselectable
+        aria-label="Items in the tree"
+        className={cn(
+          "relative overflow-y-auto overscroll-contain p-1",
+          touch ? "min-h-0 flex-1 pb-8" : "max-h-[min(340px,50vh)]"
+        )}
       >
-        {!anyShown && (
+        {!ready ? null : rows.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-muted-foreground">
             {options.length === 0
               ? "Add your tree on the Tree tab first."
-              : `No items match “${query.trim()}”.`}
+              : `No items match “${search.trim()}”.`}
           </p>
+        ) : (
+          rows.map(({ index, option, pickable: canPick, picked }) => (
+            <PickerRow
+              key={index}
+              id={`${id}-${index}`}
+              index={index}
+              option={option}
+              query={search}
+              pickable={canPick}
+              picked={picked}
+              active={!touch && index === activeIndex}
+              touch={touch}
+              onToggle={toggle}
+              onHover={touch ? undefined : hover}
+            />
+          ))
         )}
-        {anyShown &&
-          options.map((option, index) => {
-            if (!shown.has(index)) return null;
-            const indent = { paddingLeft: 8 + option.level * 14 };
-            if (!pickable(option)) {
-              return (
-                <div
-                  key={index}
-                  role="presentation"
-                  style={indent}
-                  className={cn(
-                    "flex items-center pr-2 text-[13px] text-muted-foreground",
-                    // Not tappable, so a label's height, not a target's
-                    touch ? "h-9" : "h-8"
-                  )}
-                >
-                  <span className="truncate">
-                    <Name name={option.name} query={query} />
-                  </span>
-                </div>
-              );
-            }
-            const on = picked.has(option.path);
-            return (
-              <CommandItem
-                key={index}
-                value={String(index)}
-                onSelect={() => onToggle(option.path)}
-                aria-checked={on}
-                style={indent}
-                className={cn(
-                  "cursor-pointer gap-2 pr-2",
-                  // A touch has no highlight to move with keys, so none shows until a row is pressed
-                  touch
-                    ? "h-11 text-[15px] active:bg-accent data-[selected=true]:bg-transparent"
-                    : "h-8 text-[13px]",
-                  on && "text-green-800 data-[selected=true]:text-green-800"
-                )}
-              >
-                <span className="min-w-0 flex-1 truncate">
-                  <Name name={option.name} query={query} />
-                </span>
-                <Check className={cn("h-4 w-4 text-green-600", !on && "invisible")} aria-hidden />
-              </CommandItem>
-            );
-          })}
-      </CommandList>
-    </Command>
+      </div>
+    </div>
   );
+}
+
+/** One item: an answer to pick, or a parent shown only to say where its items sit */
+const PickerRow = React.memo(function PickerRow({
+  id,
+  index,
+  option,
+  query,
+  pickable,
+  picked,
+  active,
+  touch,
+  onToggle,
+  onHover,
+}: {
+  id: string;
+  index: number;
+  option: AnswerOption;
+  query: string;
+  pickable: boolean;
+  picked: boolean;
+  active: boolean;
+  touch: boolean;
+  onToggle: (path: string) => void;
+  onHover?: (index: number) => void;
+}) {
+  const name = (
+    <span className="min-w-0 flex-1 truncate">
+      <Name name={option.name} query={query} />
+    </span>
+  );
+  const indent = { paddingLeft: 8 + option.level * 14 };
+  if (!pickable) {
+    return (
+      <div
+        role="presentation"
+        style={indent}
+        className={cn(
+          "flex items-center pr-2 text-[13px] text-muted-foreground",
+          // Not tappable, so a label's height, not a target's
+          touch ? "h-9" : "h-8"
+        )}
+      >
+        {name}
+      </div>
+    );
+  }
+  return (
+    // Keys reach the rows through the search field, which points at the active one (aria-activedescendant)
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events
+    <div
+      id={id}
+      role="option"
+      aria-selected={picked}
+      data-index={index}
+      onClick={() => onToggle(option.path)}
+      // The search keeps the focus, so the arrow keys carry on after a click
+      onMouseDown={(event) => event.preventDefault()}
+      onMouseMove={onHover ? () => !active && onHover(index) : undefined}
+      style={indent}
+      className={cn(
+        "flex cursor-pointer select-none items-center gap-2 rounded-sm pr-2",
+        touch ? "h-11 text-[15px] active:bg-accent" : "h-8 text-[13px]",
+        active && "bg-accent",
+        picked && "text-green-800"
+      )}
+    >
+      {name}
+      <Check
+        className={cn("h-4 w-4 shrink-0 text-green-600", !picked && "invisible")}
+        aria-hidden
+      />
+    </div>
+  );
+});
+
+/** The rows a search shows; none when nothing it shows can be picked */
+function useRows(
+  { options, allowParents, selected }: Omit<ListProps, "onToggle">,
+  query: string,
+  ready: boolean
+) {
+  return React.useMemo(() => {
+    if (!ready) return [];
+    const shown = searchOptions(options, query);
+    const picked = new Set(selected);
+    const rows = options
+      .map((option, index) => ({
+        index,
+        option,
+        pickable: !option.parent || allowParents,
+        picked: picked.has(option.path),
+      }))
+      .filter(({ index }) => shown.has(index));
+    return rows.some((row) => row.pickable) ? rows : [];
+  }, [options, allowParents, selected, query, ready]);
+}
+
+/**
+ * Keeps an open drawer above the iOS keyboard. iOS doesn't shrink the page for
+ * it, so the drawer is lifted and sized to the visible area, its search at the
+ * top and its list ending at the keyboard. Set on the element directly, as the
+ * keyboard moves, without a render.
+ */
+function useKeyboardFit(ref: React.RefObject<HTMLElement>, active: boolean) {
+  React.useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!active || !viewport) return;
+    const fit = () => {
+      const el = ref.current;
+      if (!el) return;
+      const inset = window.innerHeight - viewport.height - viewport.offsetTop;
+      // Under 80px is browser chrome moving, not a keyboard
+      const keyboard = inset > 80;
+      el.style.bottom = keyboard ? `${inset}px` : "";
+      el.style.height = keyboard ? `${viewport.height - 8}px` : "";
+    };
+    fit();
+    viewport.addEventListener("resize", fit);
+    viewport.addEventListener("scroll", fit);
+    return () => {
+      viewport.removeEventListener("resize", fit);
+      viewport.removeEventListener("scroll", fit);
+    };
+  }, [ref, active]);
 }
 
 /** A name with the searched letters in bold */
