@@ -5,6 +5,7 @@ vi.mock("@/env", () => ({ env: {} }));
 
 import {
   answerOptions,
+  carryAnswers,
   searchOptions,
   splitAnswers,
   toggleAnswer,
@@ -54,6 +55,14 @@ describe("a task's answers", () => {
   it("reads the comma list, skipping blanks and repeats", () => {
     expect(splitAnswers(" /home/a , /home/b,, /home/a ")).toEqual(["/home/a", "/home/b"]);
     expect(splitAnswers("")).toEqual([]);
+  });
+
+  it("follows its items to their new paths, keeping the rest", () => {
+    const changes = new Map([["/home/about/contact", "/home/services/contact"]]);
+    expect(carryAnswers("/home/about/contact, /home/faq", changes)).toBe(
+      "/home/services/contact, /home/faq"
+    );
+    expect(carryAnswers("/home/faq", changes)).toBe("/home/faq");
   });
 
   it("adds a path, or takes it out when it's already there", () => {

@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ArrowUp } from "lucide-react";
 import { SETUP_TOUR_STEP_IDS } from "@/lib/constants";
 import {
+  pathChanges,
   rowsFromTree,
   rowsToSave,
   structureFromRows,
@@ -20,6 +21,7 @@ import {
   type OutlineRow,
 } from "@/lib/treetest/tree-outline";
 import { editorPathRule } from "@/lib/treetest/path-rule";
+import { carryAnswers } from "@/lib/treetest/task-answers";
 import { TreeEditor } from "./tree-editor";
 
 interface TreeTabProps {
@@ -45,11 +47,25 @@ export function TreeTab({ data, status, onChange }: TreeTabProps) {
   );
 
   const handleRowsChange = (next: OutlineRow[]) => {
+    // A draft's answers follow their items when they're renamed or moved. A launched study's stay
+    // put: its participants' answers were recorded against the old paths
+    const changes =
+      status === "draft" ? pathChanges(rows, next, pathRule) : new Map<string, string>();
     setRows(next);
     const saved = rowsToSave(next);
     const parsed = treeFromRows(saved, pathRule);
     emitted.current = parsed;
-    onChange({ ...data, tree: { structure: structureFromRows(saved), parsed } });
+    const tasks =
+      changes.size === 0
+        ? data.tasks
+        : {
+            ...data.tasks,
+            items: data.tasks.items.map((task) => ({
+              ...task,
+              answer: carryAnswers(task.answer, changes),
+            })),
+          };
+    onChange({ ...data, tree: { structure: structureFromRows(saved), parsed }, tasks });
   };
 
   // Long trees get a way back up

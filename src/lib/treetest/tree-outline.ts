@@ -172,6 +172,94 @@ export function removeRow(rows: OutlineRow[], index: number) {
 }
 
 /**
+ * The levels a moved row can take in the gap between two shown rows. It can
+ * nest at most one level under the row above, and no shallower than the row
+ * below, or it would take that row (and its siblings) as its own children.
+ */
+export function dropLevels(above: OutlineRow | undefined, below: OutlineRow | undefined) {
+  return { min: below?.level ?? 0, max: above ? above.level + 1 : 0 };
+}
+
+export interface DropTarget {
+  /** The shown rows the gap is between; none above is the top, none below the end */
+  above?: string;
+  below?: string;
+  level: number;
+}
+
+/**
+ * Moves a row, with everything under it, into a gap at a level `dropLevels`
+ * allows. Deeper than the row above, it becomes that row's first child, even
+ * when that row's children are hidden; otherwise it goes just before the row
+ * below, after anything hidden under the row above.
+ */
+export function moveRow(rows: OutlineRow[], index: number, target: DropTarget) {
+  const end = subtreeEnd(rows, index);
+  const shift = target.level - rows[index].level;
+  const block = rows.slice(index, end).map((row) => ({ ...row, level: row.level + shift }));
+  const rest = [...rows.slice(0, index), ...rows.slice(end)];
+  const above = rest.findIndex((row) => row.id === target.above);
+  const below = rest.findIndex((row) => row.id === target.below);
+  const at =
+    above !== -1 && target.level > rest[above].level
+      ? above + 1
+      : below !== -1
+        ? below
+        : rest.length;
+  return insertRows(rest, at, block);
+}
+
+/** Swaps a row, with everything under it, with its sibling above (-1) or below (1); null when it has none */
+export function moveAmongSiblings(rows: OutlineRow[], index: number, by: 1 | -1) {
+  const level = rows[index].level;
+  const end = subtreeEnd(rows, index);
+  if (by === 1) {
+    if (rows[end]?.level !== level) return null;
+    const nextEnd = subtreeEnd(rows, end);
+    return [
+      ...rows.slice(0, index),
+      ...rows.slice(end, nextEnd),
+      ...rows.slice(index, end),
+      ...rows.slice(nextEnd),
+    ];
+  }
+  let previous = index - 1;
+  while (previous >= 0 && rows[previous].level > level) previous -= 1;
+  if (previous < 0 || rows[previous].level !== level) return null;
+  return [
+    ...rows.slice(0, previous),
+    ...rows.slice(index, end),
+    ...rows.slice(previous, index),
+    ...rows.slice(end),
+  ];
+}
+
+/**
+ * The paths that changed between two versions of the tree, old to new, for
+ * rows kept by id (renamed or moved, or under one that was). A path two rows
+ * shared, before or after, is left out: it can't say which row an answer
+ * meant.
+ */
+export function pathChanges(before: OutlineRow[], after: OutlineRow[], rule: PathRule) {
+  const pathsById = (rows: OutlineRow[]) => {
+    const saved = rowsToSave(rows);
+    const paths = rowPaths(saved, rule);
+    const counts = new Map<string, number>();
+    for (const path of paths) counts.set(path, (counts.get(path) ?? 0) + 1);
+    return new Map(
+      saved.flatMap((row, i) => (counts.get(paths[i]) === 1 ? [[row.id, paths[i]] as const] : []))
+    );
+  };
+  const old = pathsById(before);
+  const changes = new Map<string, string>();
+  pathsById(after).forEach((path, id) => {
+    const was = old.get(id);
+    if (was && was !== path) changes.set(was, path);
+  });
+  return changes;
+}
+
+/**
  * The parents Collapse all closes: every one, except a lone top-level item,
  * which stays open so its children show, as the test opens it for
  * participants.
