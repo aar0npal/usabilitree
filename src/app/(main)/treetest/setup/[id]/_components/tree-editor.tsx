@@ -8,12 +8,14 @@ import {
   ChevronsUpDown,
   Eye,
   FileUp,
+  GripVertical,
   IndentDecrease,
   IndentIncrease,
   Keyboard,
   Plus,
   Trash2,
   TriangleAlert,
+  Undo2,
   Upload,
 } from "lucide-react";
 import {
@@ -48,6 +50,7 @@ import {
 } from "@/components/ui/dialog";
 import { TreePreview } from "@/components/tree-preview";
 import { cn } from "@/lib/utils";
+import { usePointerDrag, type DragPoint } from "@/lib/hooks/use-pointer-drag";
 import { parseTreeText, type TreeImport } from "@/lib/treetest/tree-import";
 import { emptyHistory, record, redo, undo, type EditHistory } from "@/lib/treetest/edit-history";
 import type { PathRule } from "@/lib/treetest/path-rule";
@@ -55,6 +58,7 @@ import {
   canIndent,
   canOutdent,
   collapseAllIds,
+  dropLevels,
   findPathIssues,
   fitPath,
   indentRow,
@@ -62,6 +66,8 @@ import {
   insertRows,
   isParentRow,
   makeRow,
+  moveAmongSiblings,
+  moveRow,
   outdentRow,
   removeRow,
   rowPaths,
@@ -69,6 +75,7 @@ import {
   subtreeEnd,
   treeFromRows,
   visibleRows,
+  type DropTarget,
   type OutlineRow,
   type PathIssue,
 } from "@/lib/treetest/tree-outline";
@@ -84,6 +91,25 @@ const IOS_ADDRESS_BAR = 28;
 const ANIMATED_ROWS = 40;
 const SHOWN = { height: "auto", opacity: 1 };
 const HIDDEN = { height: 0, opacity: 0 };
+// One level's indent, in px: rows step in by it, and a drag sideways by it changes the level
+const INDENT = 16;
+
+/** A drag in progress: what it was picked up from, and the rows it can land between */
+interface DragSession {
+  id: string;
+  touch: boolean;
+  startX: number;
+  startLevel: number;
+  /** The shown rows the dragged block can land between, in page coordinates */
+  others: { row: OutlineRow; top: number; bottom: number }[];
+  listTop: number;
+  /** Where on the row it was picked up, so the lifted copy stays under the pointer */
+  grabY: number;
+  left: number;
+  width: number;
+  transform: string;
+  target: DropTarget | null;
+}
 
 interface TreeEditorProps {
   rows: OutlineRow[];
@@ -119,6 +145,30 @@ export function TreeEditor({
   const [dragOver, setDragOver] = React.useState(false);
   const [pending, setPending] = React.useState<{ result: TreeImport; source: string } | null>(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  // A row being dragged with what moves with it, and the gap it would land in
+  const [dragging, setDragging] = React.useState<{
+    id: string;
+    ids: ReadonlySet<string>;
+    name: string;
+    under: number;
+  } | null>(null);
+  // The row a touch drag just placed. A phone has no Tab key, so a bar offers its level
+  const [placedId, setPlacedId] = React.useState<string | null>(null);
+  const session = React.useRef<DragSession | null>(null);
+  // The lifted copy and the drop line move straight on the elements: a render per pointer move
+  // would rebuild every row of a long tree
+  const ghostRef = React.useRef<HTMLDivElement>(null);
+  const lineRef = React.useRef<HTMLDivElement>(null);
+  const listEl = React.useRef<HTMLDivElement | null>(null);
+  const setList = React.useCallback(
+    (el: HTMLDivElement | null) => {
+      listEl.current = el;
+      listRef(el);
+    },
+    [listRef]
+  );
+  // Set while a keyboard move reorders the rows, so the moved field's blur doesn't end the edit
+  const keepEditing = React.useRef(false);
   // A name as it was when editing began, so an emptied parent can get it back
   const startName = React.useRef("");
   // The row being edited as of the latest render, so a field's late blur can't end a newer edit
@@ -169,20 +219,30 @@ export function TreeEditor({
     }
   };
 
-  const paths = React.useMemo(() => rowPaths(rows, pathRule), [rows, pathRule]);
-  const issues = React.useMemo(() => findPathIssues(rows, pathRule), [rows, pathRule]);
+  // Typing changes one row's name: its field shows each keystroke at once (it reads the name from
+  // EditingName), and the list, with every row's path, follows in a background render that the
+  // next keystroke can interrupt. A change to the tree's shape renders at once, so a row added by
+  // Enter gets its field in the same keystroke and a phone's keyboard stays up
+  const deferredRows = React.useDeferredValue(rows);
+  const listRows =
+    deferredRows.length === rows.length &&
+    deferredRows.every((row, i) => row.id === rows[i].id && row.level === rows[i].level)
+      ? deferredRows
+      : rows;
+  const paths = React.useMemo(() => rowPaths(listRows, pathRule), [listRows, pathRule]);
+  const issues = React.useMemo(() => findPathIssues(listRows, pathRule), [listRows, pathRule]);
   // The chevron turns at once and the rows follow in a background render, so opening a big
   // subtree mounts its rows between animation frames instead of freezing them
   const listCollapsed = React.useDeferredValue(collapsed);
+  // The rows as shown, for the keys and the toolbar; the list renders from listRows
   const shown = visibleRows(rows, listCollapsed);
-  const shownIds = shown.map(({ row }) => row.id);
   const lastShown = React.useRef<string[]>([]);
-  const { entering, leaving } = planMotion(lastShown.current, shownIds);
-  React.useLayoutEffect(() => {
-    lastShown.current = shownIds;
-  });
   const editingIndex = editingId ? rows.findIndex((row) => row.id === editingId) : -1;
-  const tabStop = activeId && rows.some((row) => row.id === activeId) ? activeId : rows[0]?.id;
+  const placedIndex = placedId ? rows.findIndex((row) => row.id === placedId) : -1;
+  // The row the toolbars act on: the one being edited, or one a touch drag just placed
+  const toolIndex = editingIndex !== -1 ? editingIndex : placedIndex;
+  const tabStop =
+    activeId && listRows.some((row) => row.id === activeId) ? activeId : listRows[0]?.id;
 
   React.useEffect(() => {
     const input = inputRef.current;
@@ -213,6 +273,7 @@ export function TreeEditor({
   }, [coarse, editingId, reduce, barSpace]);
 
   const edit = (row: OutlineRow) => {
+    setPlacedId(null);
     startName.current = row.name;
     setActiveId(row.id);
     setEditingId(row.id);
@@ -248,12 +309,12 @@ export function TreeEditor({
   };
 
   const indent = () => {
-    if (editingIndex === -1 || !canIndent(rows, editingIndex)) return;
+    if (toolIndex === -1 || !canIndent(rows, toolIndex)) return;
     // The row above becomes a parent: show its new child
     const above = rows
-      .slice(0, editingIndex)
+      .slice(0, toolIndex)
       .reverse()
-      .find((r) => r.level === rows[editingIndex].level);
+      .find((r) => r.level === rows[toolIndex].level);
     if (above && collapsed.has(above.id)) {
       setCollapsed((current) => {
         const next = new Set(current);
@@ -261,12 +322,24 @@ export function TreeEditor({
         return next;
       });
     }
-    change(indentRow(rows, editingIndex));
+    change(indentRow(rows, toolIndex));
   };
 
   const outdent = () => {
-    if (editingIndex === -1) return;
-    change(outdentRow(rows, editingIndex));
+    if (toolIndex === -1) return;
+    change(outdentRow(rows, toolIndex));
+  };
+
+  /** ⌥↑ / ⌥↓: swaps a row with its sibling, the keyboard's way to drag it */
+  const shift = (index: number, by: 1 | -1, refocus: () => void) => {
+    const next = moveAmongSiblings(rows, index, by);
+    if (!next) return;
+    keepEditing.current = true;
+    change(next);
+    requestAnimationFrame(() => {
+      keepEditing.current = false;
+      refocus();
+    });
   };
 
   const add = () => {
@@ -316,7 +389,8 @@ export function TreeEditor({
     );
   };
 
-  const move = (by: 1 | -1) => {
+  /** Up or Down while editing: carries the edit to the shown row above or below */
+  const go = (by: 1 | -1) => {
     const at = shown.findIndex(({ row }) => row.id === editingId);
     const target = shown[at + by];
     if (!target) return;
@@ -390,6 +464,11 @@ export function TreeEditor({
   const onFieldKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     const row = rows[editingIndex];
+    if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+      event.preventDefault();
+      shift(editingIndex, event.key === "ArrowUp" ? -1 : 1, () => inputRef.current?.focus());
+      return;
+    }
     switch (event.key) {
       case "Enter":
         event.preventDefault();
@@ -414,11 +493,11 @@ export function TreeEditor({
         break;
       case "ArrowUp":
         event.preventDefault();
-        move(-1);
+        go(-1);
         break;
       case "ArrowDown":
         event.preventDefault();
-        move(1);
+        go(1);
         break;
     }
   };
@@ -429,6 +508,11 @@ export function TreeEditor({
     if (at === -1) return;
     const { row, index } = shown[at];
     const parent = isParentRow(rows, index);
+    if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+      event.preventDefault();
+      shift(index, event.key === "ArrowUp" ? -1 : 1, () => rowRefs.current.get(id)?.focus());
+      return;
+    }
     switch (event.key) {
       case "Enter":
       case "F2":
@@ -485,10 +569,116 @@ export function TreeEditor({
     void importFile(event.dataTransfer.files[0]);
   };
 
+  // Moving a row by dragging it: by its grip with a mouse, by a long-press on a touch screen
+
+  const startMove = (id: string, point: DragPoint, touch: boolean) => {
+    if (editingRef.current) finish();
+    setPlacedId(null);
+    const index = rows.findIndex((row) => row.id === id);
+    const el = rowRefs.current.get(id);
+    const list = listEl.current;
+    if (index === -1 || !el || !list) return;
+    const end = subtreeEnd(rows, index);
+    const ids = new Set(rows.slice(index, end).map((row) => row.id));
+    const scrollY = window.scrollY;
+    const box = el.getBoundingClientRect();
+    session.current = {
+      id,
+      touch,
+      startX: point.x,
+      startLevel: rows[index].level,
+      others: shown.flatMap(({ row }) => {
+        const other = ids.has(row.id) ? null : rowRefs.current.get(row.id)?.getBoundingClientRect();
+        return other ? [{ row, top: other.top + scrollY, bottom: other.bottom + scrollY }] : [];
+      }),
+      listTop: list.getBoundingClientRect().top + scrollY,
+      grabY: point.y - box.top,
+      left: box.left,
+      width: box.width,
+      transform: "",
+      target: null,
+    };
+    setDragging({ id, ids, name: rows[index].name.trim() || "Item", under: end - index - 1 });
+    followMove(point);
+  };
+
+  /** Finds the gap under the pointer and the level for it; the lifted copy follows */
+  const followMove = (point: DragPoint) => {
+    const info = session.current;
+    if (!info) return;
+    const y = point.y + window.scrollY;
+    const at = info.others.findIndex((other) => (other.top + other.bottom) / 2 > y);
+    const below = at === -1 ? undefined : info.others[at];
+    const above = at === -1 ? info.others[info.others.length - 1] : info.others[at - 1];
+    const { min, max } = dropLevels(above?.row, below?.row);
+    // A mouse sets the level by how far it has moved sideways; a finger lands beside the row above
+    const wanted = info.touch
+      ? (above?.row.level ?? 0)
+      : info.startLevel + Math.round((point.x - info.startX) / INDENT);
+    const level = Math.min(max, Math.max(min, wanted));
+    // In the gap just under the row above (rows sit 8px apart). Not midway to the row below: the
+    // dragged rows stay in place, faded, and may sit between the two
+    const lineY = (above ? above.bottom + 4 : (below?.top ?? info.listTop) - 4) - info.listTop;
+    info.target = { above: above?.row.id, below: below?.row.id, level };
+    const line = lineRef.current;
+    if (line) {
+      line.style.top = `${lineY - 1}px`;
+      line.style.left = `${level * INDENT}px`;
+      line.style.opacity = "1";
+    }
+    info.transform = `translate3d(${info.left + (level - info.startLevel) * INDENT}px, ${point.y - info.grabY}px, 0) scale(1.02)`;
+    if (ghostRef.current) ghostRef.current.style.transform = info.transform;
+  };
+
+  const endMove = () => {
+    session.current = null;
+    setDragging(null);
+  };
+
+  const dropMove = () => {
+    const info = session.current;
+    endMove();
+    const index = info ? rows.findIndex((row) => row.id === info.id) : -1;
+    if (!info?.target || index === -1) return;
+    const next = moveRow(rows, index, info.target);
+    if (next.every((row, i) => row.id === rows[i].id && row.level === rows[i].level)) return;
+    // Nested into a closed parent: open it, so the row is seen where it landed
+    const above = rows.find((row) => row.id === info.target?.above);
+    if (above && collapsed.has(above.id) && info.target.level > above.level) toggle(above.id, true);
+    const before = rows;
+    change(next);
+    if (info.touch) {
+      // The bar it gets has Undo, and a toast would sit under it
+      setPlacedId(info.id);
+      return;
+    }
+    // Focus lands on the moved row, so ⌘Z and the arrow keys carry on from it
+    focusRow(info.id);
+    const at = next.findIndex((row) => row.id === info.id);
+    const parent = next
+      .slice(0, at)
+      .reverse()
+      .find((row) => row.level < next[at].level);
+    const name = next[at].name.trim() || "Item";
+    toast(
+      parent ? `Moved “${name}” under ${parent.name.trim()}` : `Moved “${name}” to the top level`,
+      { action: { label: "Undo", onClick: () => change(before) } }
+    );
+  };
+
+  const drag = usePointerDrag<string>({
+    onStart: startMove,
+    onMove: followMove,
+    onDrop: dropMove,
+    onCancel: endMove,
+  });
+
   // Rows get one unchanging set of handlers that call this render's, so a keystroke or a toggle
   // re-renders only the rows it changes, not every row of a long tree
   const handlers: RowActions = {
     edit: (id) => {
+      // A long-press ends with the tap it started as
+      if (drag.justDragged()) return;
       const row = rows.find((r) => r.id === id);
       if (row) edit(row);
     },
@@ -502,12 +692,14 @@ export function TreeEditor({
     fieldKeyDown: onFieldKeyDown,
     fieldPaste: onFieldPaste,
     blur: (id) => {
-      if (editingRef.current === id) finish();
+      if (editingRef.current === id && !keepEditing.current) finish();
     },
     outdent,
     indent,
     add,
     remove,
+    grab: drag.fromHandle,
+    press: drag.fromPress,
   };
   const latest = React.useRef(handlers);
   React.useLayoutEffect(() => {
@@ -527,9 +719,88 @@ export function TreeEditor({
       indent: () => latest.current.indent(),
       add: () => latest.current.add(),
       remove: () => latest.current.remove(),
+      grab: (event, id) => latest.current.grab(event, id),
+      press: (event, id) => latest.current.press(event, id),
     }),
     []
   );
+
+  const draggedIds = dragging?.ids;
+  // The rows, rebuilt only when what they show changes: not on a keystroke, whose name EditingName
+  // carries to the field
+  const list = React.useMemo(() => {
+    const visible = visibleRows(listRows, listCollapsed);
+    const ids = visible.map(({ row }) => row.id);
+    const { entering, leaving } = planMotion(lastShown.current, ids);
+    const items = visible.map(({ row, index }) => {
+      const parent = isParentRow(listRows, index);
+      const editing = row.id === editingId;
+      const issue = issues.get(row.id);
+      // A path problem shows even with paths hidden
+      const hasPath =
+        (!parent || allowNonLeafAnswers) && row.name.trim() !== "" && (showPaths || !!issue);
+      // Below sm the path runs under the name, across the row; beside it, it gets what the name,
+      // the toolbar and the chevron leave (a 14px name runs about 7.6px a character, a path 6.6 at
+      // its 12px beside the name and 7.2 at its 13px under it)
+      const beside = listWidth >= 640;
+      const room =
+        listWidth -
+        row.level * INDENT -
+        // The row's side padding; a mouse's rows keep room for the grip
+        (coarse ? 24 : 32) -
+        (beside
+          ? row.name.length * 7.6 + 12 + (editing && !coarse ? 126 : 0) + (parent ? 32 : 0)
+          : 0);
+      return (
+        <RowItem
+          key={row.id}
+          row={row}
+          parent={parent}
+          open={!collapsed.has(row.id)}
+          editing={editing}
+          tabStop={row.id === tabStop}
+          path={
+            hasPath
+              ? fitPath(paths[index], Math.max(12, Math.floor((room - 16) / (beside ? 6.6 : 7.2))))
+              : null
+          }
+          fullPath={paths[index]}
+          issue={issue}
+          pathRule={pathRule}
+          coarse={coarse}
+          dragged={!!draggedIds?.has(row.id)}
+          placed={row.id === placedId}
+          canIndent={editing && canIndent(listRows, index)}
+          canOutdent={editing && canOutdent(listRows, index)}
+          animateIn={entering.has(row.id)}
+          transition={rowMotion}
+          actions={actions}
+          inputRef={inputRef}
+        />
+      );
+    });
+    return { ids, leaving, items };
+  }, [
+    listRows,
+    listCollapsed,
+    collapsed,
+    editingId,
+    placedId,
+    draggedIds,
+    tabStop,
+    paths,
+    issues,
+    showPaths,
+    listWidth,
+    coarse,
+    pathRule,
+    allowNonLeafAnswers,
+    rowMotion,
+    actions,
+  ]);
+  React.useLayoutEffect(() => {
+    lastShown.current = list.ids;
+  });
 
   return (
     <MotionConfig reducedMotion="user">
@@ -643,70 +914,33 @@ export function TreeEditor({
                 )}
 
                 <div
-                  ref={listRef}
+                  ref={setList}
                   key={listKey.current}
                   role="tree"
                   aria-labelledby={labelId}
-                  className="-mb-2"
+                  className="relative -mb-2"
                 >
+                  {/* Where a dragged row would land, indented to the level it would take */}
+                  {dragging && (
+                    <div
+                      ref={lineRef}
+                      aria-hidden
+                      className="pointer-events-none absolute right-0 z-10 h-0.5 rounded-full bg-blue-500 opacity-0"
+                    />
+                  )}
                   {/* Rows open and close in place: added, deleted, or shown and hidden by their parent.
                       A leaving row reads from `custom` whether it's one of the few that animate.
                       presenceAffectsLayout is off (there are no layout animations): left on, it hands
                       every row a new context on each render, re-rendering all of them per keystroke */}
-                  <AnimatePresence initial={false} custom={leaving} presenceAffectsLayout={false}>
-                    {shown.map(({ row, index }) => {
-                      const parent = isParentRow(rows, index);
-                      const editing = row.id === editingId;
-                      const issue = issues.get(row.id);
-                      // A path problem shows even with paths hidden
-                      const hasPath =
-                        (!parent || allowNonLeafAnswers) &&
-                        row.name.trim() !== "" &&
-                        (showPaths || !!issue);
-                      // Below sm the path runs under the name, across the row; beside it, it gets what the name,
-                      // the toolbar and the chevron leave (a 14px name runs about 7.6px a character, a path 6.6 at
-                      // its 12px beside the name and 7.2 at its 13px under it)
-                      const beside = listWidth >= 640;
-                      const room =
-                        listWidth -
-                        row.level * 16 -
-                        24 -
-                        (beside
-                          ? row.name.length * 7.6 +
-                            12 +
-                            (editing && !coarse ? 126 : 0) +
-                            (parent ? 32 : 0)
-                          : 0);
-                      return (
-                        <RowItem
-                          key={row.id}
-                          row={row}
-                          parent={parent}
-                          open={!collapsed.has(row.id)}
-                          editing={editing}
-                          tabStop={row.id === tabStop}
-                          path={
-                            hasPath
-                              ? fitPath(
-                                  paths[index],
-                                  Math.max(12, Math.floor((room - 16) / (beside ? 6.6 : 7.2)))
-                                )
-                              : null
-                          }
-                          fullPath={paths[index]}
-                          issue={issue}
-                          pathRule={pathRule}
-                          coarse={coarse}
-                          canIndent={editing && canIndent(rows, index)}
-                          canOutdent={editing && canOutdent(rows, index)}
-                          animateIn={entering.has(row.id)}
-                          transition={rowMotion}
-                          actions={actions}
-                          inputRef={inputRef}
-                        />
-                      );
-                    })}
-                  </AnimatePresence>
+                  <EditingName.Provider value={editingIndex !== -1 ? rows[editingIndex].name : ""}>
+                    <AnimatePresence
+                      initial={false}
+                      custom={list.leaving}
+                      presenceAffectsLayout={false}
+                    >
+                      {list.items}
+                    </AnimatePresence>
+                  </EditingName.Provider>
                 </div>
 
                 <Button
@@ -720,7 +954,7 @@ export function TreeEditor({
                   Add item
                 </Button>
                 {/* Room to scroll the last rows up past the keyboard bar */}
-                {coarse && editingIndex !== -1 && (
+                {coarse && toolIndex !== -1 && (
                   <div aria-hidden style={{ height: barSpace + 24 }} />
                 )}
               </div>
@@ -742,6 +976,44 @@ export function TreeEditor({
               }}
             />
           )}
+          {/* After a touch drag: the level, with no keyboard up */}
+          {editingIndex === -1 && placedIndex !== -1 && coarse && (
+            <KeyboardBar
+              lift={lift}
+              canIndent={canIndent(rows, placedIndex)}
+              canOutdent={canOutdent(rows, placedIndex)}
+              onOutdent={outdent}
+              onIndent={indent}
+              onUndo={() => {
+                step("undo");
+                setPlacedId(null);
+              }}
+              onDone={() => setPlacedId(null)}
+            />
+          )}
+
+          {/* The dragged row, lifted, following the pointer; its children travel inside it */}
+          {dragging &&
+            createPortal(
+              <div
+                ref={ghostRef}
+                aria-hidden
+                className={cn(
+                  "pointer-events-none fixed left-0 top-0 z-[60] flex min-h-9 items-center gap-2 rounded bg-white py-2 text-base text-gray-900 shadow-lg ring-1 ring-ring sm:text-sm",
+                  // The row's own padding, so the name doesn't shift as it lifts
+                  coarse ? "px-3" : "pl-5 pr-3"
+                )}
+                style={{ width: session.current?.width, transform: session.current?.transform }}
+              >
+                <span className="min-w-0 flex-1 truncate">{dragging.name}</span>
+                {dragging.under > 0 && (
+                  <span className="shrink-0 rounded-full bg-gray-100 px-2 text-xs text-gray-600">
+                    +{dragging.under}
+                  </span>
+                )}
+              </div>,
+              document.body
+            )}
 
           <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
             <AlertDialogContent>
@@ -789,6 +1061,19 @@ export function TreeEditor({
   );
 }
 
+/** The edited row's name as typed, which reaches its field without re-rendering the list */
+const EditingName = React.createContext("");
+
+function NameField({
+  inputRef,
+  ...props
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> & {
+  inputRef: React.RefObject<HTMLInputElement>;
+}) {
+  const name = React.useContext(EditingName);
+  return <input ref={inputRef} value={name} {...props} />;
+}
+
 interface RowActions {
   edit: (id: string) => void;
   toggle: (id: string) => void;
@@ -802,6 +1087,10 @@ interface RowActions {
   indent: () => void;
   add: () => void;
   remove: () => void;
+  /** A mouse pressing a row's grip */
+  grab: (event: React.PointerEvent, id: string) => void;
+  /** A finger touching a row, which a long-press turns into a drag */
+  press: (event: React.TouchEvent, id: string) => void;
 }
 
 interface RowItemProps {
@@ -816,6 +1105,10 @@ interface RowItemProps {
   issue: PathIssue | undefined;
   pathRule: PathRule;
   coarse: boolean;
+  /** Part of the block being dragged, which stays faint in place until it lands */
+  dragged: boolean;
+  /** Just placed by a touch drag, with the bar for its level showing */
+  placed: boolean;
   canIndent: boolean;
   canOutdent: boolean;
   animateIn: boolean;
@@ -836,6 +1129,8 @@ const RowItem = React.memo(function RowItem({
   issue,
   pathRule,
   coarse,
+  dragged,
+  placed,
   canIndent,
   canOutdent,
   animateIn,
@@ -873,19 +1168,39 @@ const RowItem = React.memo(function RowItem({
         tabIndex={editing ? -1 : tabStop ? 0 : -1}
         onKeyDown={(event) => actions.rowKeyDown(event, row.id)}
         onClick={() => !editing && actions.edit(row.id)}
-        style={{ marginLeft: row.level * 16 }}
+        onTouchStart={coarse && !editing ? (event) => actions.press(event, row.id) : undefined}
+        // A long-press lifts the row, so it opens no menu
+        onContextMenu={coarse ? (event) => event.preventDefault() : undefined}
+        style={{ marginLeft: row.level * INDENT }}
         className={cn(
-          "mb-2 flex min-h-9 cursor-text items-center gap-2 rounded px-3 text-base text-gray-900 outline-none transition-[margin,background-color,box-shadow] duration-200 motion-reduce:transition-none sm:text-sm",
+          "group/row relative mb-2 flex min-h-9 cursor-text items-center gap-2 rounded text-base text-gray-900 outline-none transition-[margin,background-color,box-shadow,opacity] duration-200 motion-reduce:transition-none sm:text-sm",
+          // A long-press lifts the row, so it doesn't select its text or show iOS's callout
+          coarse ? "select-none px-3 [-webkit-touch-callout:none]" : "pl-5 pr-3",
           "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
           parent ? "bg-gray-100" : "bg-gray-50",
-          editing && "bg-white ring-1 ring-inset ring-ring"
+          (editing || placed) && "bg-white ring-1 ring-inset ring-ring",
+          dragged && "opacity-40"
         )}
       >
+        {!coarse && (
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={`Drag to move ${row.name}`}
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              actions.grab(event, row.id);
+            }}
+            onClick={(event) => event.stopPropagation()}
+            className="absolute left-0.5 top-1/2 grid h-7 w-4 -translate-y-1/2 cursor-grab place-items-center rounded text-gray-400 opacity-0 transition-opacity hover:text-gray-700 focus-visible:opacity-100 active:cursor-grabbing group-hover/row:opacity-100 motion-reduce:transition-none"
+          >
+            <GripVertical className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )}
         <div className="flex min-w-0 flex-1 flex-col items-start gap-1 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           {editing ? (
-            <input
-              ref={inputRef}
-              value={row.name}
+            <NameField
+              inputRef={inputRef}
               placeholder="Item name"
               aria-label="Item name"
               enterKeyHint="next"
@@ -1049,7 +1364,22 @@ function RowTools({ canIndent, canOutdent, onOutdent, onIndent, onAdd, onDelete 
 }
 
 /** On a touch screen the shortcuts ride on the keyboard: a phone has no Tab key */
-function KeyboardBar({ onDone, lift, ...tools }: ToolProps & { onDone: () => void; lift: number }) {
+/**
+ * The touch toolbar. While a row is edited it rides the keyboard with Add and
+ * Delete; for a row a drag just placed, with no keyboard up, it offers Undo
+ * instead.
+ */
+function KeyboardBar({
+  onDone,
+  lift,
+  ...tools
+}: Omit<ToolProps, "onAdd" | "onDelete"> & {
+  onAdd?: () => void;
+  onDelete?: () => void;
+  onUndo?: () => void;
+  onDone: () => void;
+  lift: number;
+}) {
   // Placed from the viewport's own events, straight on the element: a React render per scroll
   // event trails the page. iOS still reports its viewport a beat late mid-fling
   const bar = React.useRef<HTMLDivElement>(null);
@@ -1108,22 +1438,36 @@ function KeyboardBar({ onDone, lift, ...tools }: ToolProps & { onDone: () => voi
             <IndentIncrease className="h-[18px] w-[18px]" aria-hidden />
             Indent
           </Button>
-          <Button
-            variant="secondary"
-            className="h-9 w-10 px-0"
-            aria-label="Add item"
-            {...press(tools.onAdd)}
-          >
-            <Plus className="h-[18px] w-[18px]" aria-hidden />
-          </Button>
-          <Button
-            variant="secondary"
-            className="h-9 w-10 px-0 text-red-600"
-            aria-label="Delete item"
-            {...press(tools.onDelete)}
-          >
-            <Trash2 className="h-[18px] w-[18px]" aria-hidden />
-          </Button>
+          {tools.onAdd && (
+            <Button
+              variant="secondary"
+              className="h-9 w-10 px-0"
+              aria-label="Add item"
+              {...press(tools.onAdd)}
+            >
+              <Plus className="h-[18px] w-[18px]" aria-hidden />
+            </Button>
+          )}
+          {tools.onDelete && (
+            <Button
+              variant="secondary"
+              className="h-9 w-10 px-0 text-red-600"
+              aria-label="Delete item"
+              {...press(tools.onDelete)}
+            >
+              <Trash2 className="h-[18px] w-[18px]" aria-hidden />
+            </Button>
+          )}
+          {tools.onUndo && (
+            <Button
+              variant="secondary"
+              className="h-9 w-10 px-0"
+              aria-label="Undo"
+              {...press(tools.onUndo)}
+            >
+              <Undo2 className="h-[18px] w-[18px]" aria-hidden />
+            </Button>
+          )}
           <Button className="ml-auto h-9 px-4" {...press(onDone)}>
             Done
           </Button>
@@ -1238,15 +1582,17 @@ function HeaderButton({
 
 /** The editor's keys, behind one button: a phone has no such keys, so it isn't shown there */
 function Shortcuts() {
-  const [mod, setMod] = React.useState("Ctrl");
+  const [mac, setMac] = React.useState(false);
   React.useEffect(() => {
-    if (/Mac|iPhone|iPad/.test(navigator.platform)) setMod("⌘");
+    setMac(/Mac|iPhone|iPad/.test(navigator.platform));
   }, []);
+  const mod = mac ? "⌘" : "Ctrl";
   const keys: [string[], string][] = [
     [["Enter"], "Add an item below"],
     [["Tab"], "Indent"],
     [["Shift", "Tab"], "Outdent"],
-    [["↑", "↓"], "Move up or down"],
+    [["↑", "↓"], "Go to the item above or below"],
+    [[mac ? "⌥" : "Alt", "↑", "↓"], "Move the item up or down"],
     [["Esc"], "Finish editing"],
     [["Backspace"], "Delete an empty item"],
     [[mod, "V"], "Paste a list as items"],

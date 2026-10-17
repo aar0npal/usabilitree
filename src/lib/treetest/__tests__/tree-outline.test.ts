@@ -9,12 +9,16 @@ import type { PathRule } from "@/lib/treetest/path-rule";
 import {
   canIndent,
   collapseAllIds,
+  dropLevels,
   findPathIssues,
   fitPath,
   indentRow,
   insertionPoint,
   makeRow,
+  moveAmongSiblings,
+  moveRow,
   outdentRow,
+  pathChanges,
   removeRow,
   rowPaths,
   rowsFromTree,
@@ -139,6 +143,57 @@ describe("editing rows", () => {
     expect(collapseAllIds(two)).toEqual([two[0].id, two[2].id]);
   });
 
+  it("moves a row with everything under it into a gap, at the level the drop sets", () => {
+    const list = tree();
+    const id = (name: string) => list.find((row) => row.name === name)!.id;
+    // Services, with its two children, to the end at the top level
+    expect(shape(moveRow(list, 1, { above: id("About"), level: 0 }))).toEqual([
+      "Home@0",
+      "About@1",
+      "Services@0",
+      "Permits@1",
+      "Clinics@1",
+    ]);
+    // About up between Permits and Clinics, one level deeper
+    expect(
+      shape(moveRow(list, 4, { above: id("Permits"), below: id("Clinics"), level: 2 }))
+    ).toEqual(["Home@0", "Services@1", "Permits@2", "About@2", "Clinics@2"]);
+    // Deeper than the row above: its first child, even if that row's children are hidden
+    expect(
+      shape(moveRow(list, 4, { above: id("Services"), below: id("About"), level: 2 }))
+    ).toEqual(["Home@0", "Services@1", "About@2", "Permits@2", "Clinics@2"]);
+  });
+
+  it("allows only levels that keep the rows around the gap where they are", () => {
+    const [home, services, permits, , about] = tree();
+    // Between a parent and its first child: only as that child's sibling
+    expect(dropLevels(services, permits)).toEqual({ min: 2, max: 2 });
+    // After the last child: as its sibling, its parent's, or nested under it
+    expect(dropLevels(permits, about)).toEqual({ min: 1, max: 3 });
+    expect(dropLevels(undefined, home)).toEqual({ min: 0, max: 0 });
+    expect(dropLevels(about, undefined)).toEqual({ min: 0, max: 2 });
+  });
+
+  it("swaps a row with its sibling above or below, children and all", () => {
+    expect(shape(moveAmongSiblings(tree(), 4, -1)!)).toEqual([
+      "Home@0",
+      "About@1",
+      "Services@1",
+      "Permits@2",
+      "Clinics@2",
+    ]);
+    expect(shape(moveAmongSiblings(tree(), 2, 1)!)).toEqual([
+      "Home@0",
+      "Services@1",
+      "Clinics@2",
+      "Permits@2",
+      "About@1",
+    ]);
+    // No sibling past its parent's edge
+    expect(moveAmongSiblings(tree(), 2, -1)).toBeNull();
+    expect(moveAmongSiblings(tree(), 4, 1)).toBeNull();
+  });
+
   it("hides the rows inside a collapsed parent", () => {
     const list = tree();
     const shown = visibleRows(list, new Set([list[1].id]));
@@ -236,6 +291,29 @@ describe("paths that can't tell items apart", () => {
 
   it("ignores rows still being named", () => {
     expect(findPathIssues(rows("Home@0", "@1", "@1"), "original").size).toBe(0);
+  });
+});
+
+describe("paths that change under answers", () => {
+  it("maps each renamed or moved item's old path to its new one, its children's too", () => {
+    const before = rows("Home@0", "Services@1", "Permits@2", "About@1", "Contact@2");
+    const renamed = before.map((row) =>
+      row.name === "Services" ? { ...row, name: "Our services" } : row
+    );
+    expect(Object.fromEntries(pathChanges(before, renamed, "original"))).toEqual({
+      "/home/services": "/home/our-services",
+      "/home/services/permits": "/home/our-services/permits",
+    });
+    const moved = moveRow(before, 4, { above: before[2].id, below: before[3].id, level: 2 });
+    expect(Object.fromEntries(pathChanges(before, moved, "original"))).toEqual({
+      "/home/about/contact": "/home/services/contact",
+    });
+  });
+
+  it("leaves out a path two items share, which can't say which one an answer meant", () => {
+    const before = rows("Home@0", "Contact@1", "About@1");
+    const clash = before.map((row) => (row.name === "About" ? { ...row, name: "Contact" } : row));
+    expect(pathChanges(before, clash, "original").size).toBe(0);
   });
 });
 

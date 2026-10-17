@@ -47,6 +47,14 @@ export function splitAnswers(answer: string): string[] {
   );
 }
 
+/** Points a task's answers at their items' new paths, after items were renamed or moved */
+export function carryAnswers(answer: string, changes: ReadonlyMap<string, string>): string {
+  if (changes.size === 0) return answer;
+  const paths = splitAnswers(answer);
+  const next = paths.map((path) => changes.get(path) ?? path);
+  return next.some((path, i) => path !== paths[i]) ? Array.from(new Set(next)).join(", ") : answer;
+}
+
 /** Adds the path to the answers, or takes it out if it's there */
 export function toggleAnswer(answer: string, path: string): string {
   const paths = splitAnswers(answer);
