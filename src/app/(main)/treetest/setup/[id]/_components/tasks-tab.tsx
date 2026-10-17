@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUp, Check, Plus, Trash2, TriangleAlert, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ArrowUp, Check, GripVertical, Plus, Trash2, TriangleAlert, X } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { StudyFormData } from "@/lib/types/tree-test";
 import { SETUP_TOUR_STEP_IDS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { usePointerDrag, type DragPoint } from "@/lib/hooks/use-pointer-drag";
 import { treePathRule } from "@/lib/treetest/path-rule";
 import {
   answerOptions,
@@ -32,6 +36,20 @@ interface TasksTabProps {
 const SHOWN = { height: "auto", opacity: 1 };
 const HIDDEN = { height: 0, opacity: 0 };
 
+/** A task being dragged: where it was picked up, and the cards it can land between */
+interface DragSession {
+  key: string;
+  /** The other cards, in page coordinates */
+  others: { key: string; top: number; bottom: number }[];
+  listTop: number;
+  grabY: number;
+  left: number;
+  width: number;
+  transform: string;
+  /** The card it would land before; null for the end */
+  before: string | null;
+}
+
 export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
   // Tasks can be added and removed only before launch; answers and wording stay editable
   const draft = status === "draft";
@@ -40,6 +58,15 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
   const keys = useTaskKeys(items.length);
   const [focusKey, setFocusKey] = React.useState<string | null>(null);
   const reduce = useReducedMotion();
+  const coarse = useMediaQuery("(pointer: coarse)");
+  // A task being dragged, and the line where it would land
+  const [dragging, setDragging] = React.useState<{ key: string; number: number } | null>(null);
+  const session = React.useRef<DragSession | null>(null);
+  const cards = React.useRef(new Map<string, HTMLDivElement>());
+  const listRef = React.useRef<HTMLDivElement>(null);
+  // Moved straight on the elements, so dragging re-renders nothing until the drop
+  const ghostRef = React.useRef<HTMLDivElement>(null);
+  const lineRef = React.useRef<HTMLDivElement>(null);
   // The form as of this render, for an Undo clicked after later edits
   const latest = React.useRef(data);
   latest.current = data;
@@ -68,6 +95,82 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
     setFocusKey(keys.insert(items.length));
     setTasks({ items: [...items, { description: "", answer: "" }] });
   };
+
+  /** Moves a task, its key with it, so its card glides to its new place */
+  const moveTask = (from: number, to: number) => {
+    if (to < 0 || to >= items.length || to === from) return;
+    keys.move(from, to);
+    const next = [...items];
+    next.splice(to, 0, ...next.splice(from, 1));
+    setTasks({ items: next });
+  };
+
+  // Reordering by dragging: by the number with a mouse, by a long-press on a touch screen.
+  // Only before launch, as a launched study's results are matched to its tasks by position
+
+  const startMove = (key: string, point: DragPoint) => {
+    const el = cards.current.get(key);
+    const list = listRef.current;
+    if (!el || !list) return;
+    const scrollY = window.scrollY;
+    const box = el.getBoundingClientRect();
+    session.current = {
+      key,
+      others: keys.list.flatMap((other) => {
+        const card = other === key ? null : cards.current.get(other)?.getBoundingClientRect();
+        return card ? [{ key: other, top: card.top + scrollY, bottom: card.bottom + scrollY }] : [];
+      }),
+      listTop: list.getBoundingClientRect().top + scrollY,
+      grabY: point.y - box.top,
+      left: box.left,
+      width: box.width,
+      transform: "",
+      before: null,
+    };
+    setDragging({ key, number: keys.list.indexOf(key) + 1 });
+    followMove(point);
+  };
+
+  const followMove = (point: DragPoint) => {
+    const info = session.current;
+    if (!info) return;
+    const y = point.y + window.scrollY;
+    const at = info.others.findIndex((other) => (other.top + other.bottom) / 2 > y);
+    const below = at === -1 ? undefined : info.others[at];
+    const above = at === -1 ? info.others[info.others.length - 1] : info.others[at - 1];
+    info.before = below?.key ?? null;
+    // In the gap just under the card above (cards sit 12px apart). Not midway to the card below:
+    // the dragged card stays in place, faded, and may sit between the two
+    const line = (above ? above.bottom + 6 : (below?.top ?? info.listTop) - 6) - info.listTop;
+    if (lineRef.current) {
+      lineRef.current.style.top = `${line - 1}px`;
+      lineRef.current.style.opacity = "1";
+    }
+    info.transform = `translate3d(${info.left}px, ${point.y - info.grabY}px, 0) scale(1.02)`;
+    if (ghostRef.current) ghostRef.current.style.transform = info.transform;
+  };
+
+  const endMove = () => {
+    session.current = null;
+    setDragging(null);
+  };
+
+  const dropMove = () => {
+    const info = session.current;
+    endMove();
+    if (!info) return;
+    const from = keys.list.indexOf(info.key);
+    const rest = keys.list.filter((key) => key !== info.key);
+    const to = info.before === null ? rest.length : rest.indexOf(info.before);
+    if (from !== -1 && to !== -1) moveTask(from, to);
+  };
+
+  const drag = usePointerDrag<string>({
+    onStart: startMove,
+    onMove: followMove,
+    onDrop: dropMove,
+    onCancel: endMove,
+  });
 
   const deleteTask = (index: number) => {
     const removed = items[index];
@@ -134,35 +237,80 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
             </div>
           ) : (
             // Each card's gap below it is its margin, inside the clip, so it closes with the height
-            <div className="-mb-3">
+            <div ref={listRef} className="relative -mb-3">
+              {dragging && (
+                <div
+                  ref={lineRef}
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded-full bg-blue-500 opacity-0"
+                />
+              )}
               <AnimatePresence initial={false} presenceAffectsLayout={false}>
-                {items.map((task, index) => (
-                  <motion.div
-                    key={keys.list[index]}
-                    initial={HIDDEN}
-                    animate={SHOWN}
-                    exit={HIDDEN}
-                    transition={
-                      reduce ? { duration: 0 } : { duration: 0.22, ease: [0.25, 0.8, 0.25, 1] }
-                    }
-                    className="overflow-hidden"
-                  >
-                    <TaskCard
-                      number={index + 1}
-                      task={task}
-                      draft={draft}
-                      options={options}
-                      answerByPath={answerByPath}
-                      allowParents={allowParents}
-                      takeFocus={keys.list[index] === focusKey}
-                      onChange={(patch) => updateTask(index, patch)}
-                      onDelete={() => deleteTask(index)}
-                    />
-                  </motion.div>
-                ))}
+                {items.map((task, index) => {
+                  const key = keys.list[index];
+                  return (
+                    <motion.div
+                      key={key}
+                      ref={(el: HTMLDivElement | null) => {
+                        if (el) cards.current.set(key, el);
+                        else cards.current.delete(key);
+                      }}
+                      initial={HIDDEN}
+                      animate={SHOWN}
+                      exit={HIDDEN}
+                      // Reordered cards glide to their places
+                      layout="position"
+                      transition={
+                        reduce ? { duration: 0 } : { duration: 0.22, ease: [0.25, 0.8, 0.25, 1] }
+                      }
+                      className="overflow-hidden"
+                    >
+                      <TaskCard
+                        number={index + 1}
+                        task={task}
+                        draft={draft}
+                        coarse={coarse}
+                        dragged={dragging?.key === key}
+                        options={options}
+                        answerByPath={answerByPath}
+                        allowParents={allowParents}
+                        takeFocus={key === focusKey}
+                        onChange={(patch) => updateTask(index, patch)}
+                        onDelete={() => deleteTask(index)}
+                        onGrab={(event) => drag.fromHandle(event, key)}
+                        onPress={(event) => {
+                          // The field and buttons keep their own long-press (selecting text, tapping)
+                          if ((event.target as Element).closest("textarea, button, input, a"))
+                            return;
+                          drag.fromPress(event, key);
+                        }}
+                        onShift={(by) => moveTask(index, index + by)}
+                      />
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
           )}
+
+          {/* The dragged task, lifted, following the pointer */}
+          {dragging &&
+            createPortal(
+              <div
+                ref={ghostRef}
+                aria-hidden
+                className="pointer-events-none fixed left-0 top-0 z-[60] flex items-start gap-3 rounded-lg border bg-background p-3 shadow-lg sm:p-4"
+                style={{ width: session.current?.width, transform: session.current?.transform }}
+              >
+                <span className="mt-px grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-neutral-600">
+                  {dragging.number}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-base font-medium leading-6 sm:text-sm sm:leading-6">
+                  {items[dragging.number - 1]?.description || "Untitled task"}
+                </span>
+              </div>,
+              document.body
+            )}
 
           {draft && (
             <div className="flex flex-wrap items-center gap-2">
@@ -201,6 +349,9 @@ interface TaskCardProps {
   number: number;
   task: Task;
   draft: boolean;
+  coarse: boolean;
+  /** Being dragged: it stays faint in place until it lands */
+  dragged: boolean;
   options: AnswerOption[];
   answerByPath: Map<string, AnswerOption>;
   allowParents: boolean;
@@ -208,32 +359,65 @@ interface TaskCardProps {
   takeFocus: boolean;
   onChange: (patch: Partial<Task>) => void;
   onDelete: () => void;
+  onGrab: (event: React.PointerEvent) => void;
+  onPress: (event: React.TouchEvent) => void;
+  /** ⌥↑ / ⌥↓ in the question: moves the task one place */
+  onShift: (by: 1 | -1) => void;
 }
 
 function TaskCard({
   number,
   task,
   draft,
+  coarse,
+  dragged,
   options,
   answerByPath,
   allowParents,
   takeFocus,
   onChange,
   onDelete,
+  onGrab,
+  onPress,
+  onShift,
 }: TaskCardProps) {
   const addAnswer = React.useRef<HTMLButtonElement>(null);
   const answers = splitAnswers(task.answer);
   const toggle = (path: string) => onChange({ answer: toggleAnswer(task.answer, path) });
+  const touchDrag = draft && coarse;
 
   return (
-    <div className="mb-3 rounded-lg border bg-background p-3 sm:p-4">
+    <div
+      onTouchStart={touchDrag ? onPress : undefined}
+      // A long-press lifts the card, so it opens no menu, selects no text and shows no iOS callout
+      onContextMenu={touchDrag ? (event) => event.preventDefault() : undefined}
+      className={cn(
+        "group/card mb-3 rounded-lg border bg-background p-3 transition-opacity duration-200 motion-reduce:transition-none sm:p-4",
+        touchDrag && "select-none [-webkit-touch-callout:none]",
+        dragged && "opacity-40"
+      )}
+    >
       <div className="flex items-start gap-3">
-        <span
-          className="mt-px grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-neutral-600"
-          aria-hidden
-        >
-          {number}
-        </span>
+        {draft && !coarse ? (
+          // The number is the handle: on hover it turns into a grip
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={`Drag to move task ${number}`}
+            onPointerDown={onGrab}
+            className="mt-px grid h-[22px] w-[22px] shrink-0 cursor-grab place-items-center rounded-full bg-muted text-xs font-semibold text-neutral-600 active:cursor-grabbing"
+          >
+            <span className="group-hover/card:hidden">{number}</span>
+            <GripVertical className="hidden h-3.5 w-3.5 group-hover/card:block" aria-hidden />
+          </button>
+        ) : (
+          <span
+            className="mt-px grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-neutral-600"
+            aria-hidden
+          >
+            {number}
+          </span>
+        )}
         <QuestionField
           id={`task-${number - 1}`}
           aria-label={`Task ${number}`}
@@ -241,6 +425,7 @@ function TaskCard({
           takeFocus={takeFocus}
           onChange={(description) => onChange({ description })}
           onEnter={() => addAnswer.current?.focus()}
+          onShift={draft ? onShift : undefined}
         />
         {draft && (
           <Button
@@ -346,6 +531,7 @@ function QuestionField({
   takeFocus,
   onChange,
   onEnter,
+  onShift,
   ...props
 }: {
   id: string;
@@ -354,6 +540,7 @@ function QuestionField({
   takeFocus: boolean;
   onChange: (value: string) => void;
   onEnter: () => void;
+  onShift?: (by: 1 | -1) => void;
 }) {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const fit = React.useCallback(() => {
@@ -382,7 +569,13 @@ function QuestionField({
       placeholder="What should participants find?"
       onChange={(event) => onChange(event.target.value.replace(/\s*\n\s*/g, " "))}
       onKeyDown={(event) => {
-        if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+        if (event.nativeEvent.isComposing) return;
+        if (onShift && event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+          event.preventDefault();
+          onShift(event.key === "ArrowUp" ? -1 : 1);
+          return;
+        }
+        if (event.key !== "Enter") return;
         event.preventDefault();
         onEnter();
       }}
@@ -446,6 +639,9 @@ function useTaskKeys(count: number) {
     },
     remove: (at: number) => {
       list.splice(at, 1);
+    },
+    move: (from: number, to: number) => {
+      list.splice(to, 0, ...list.splice(from, 1));
     },
   };
 }
