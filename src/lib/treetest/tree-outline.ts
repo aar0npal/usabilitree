@@ -235,28 +235,33 @@ export function moveAmongSiblings(rows: OutlineRow[], index: number, by: 1 | -1)
 }
 
 /**
- * The paths that changed between two versions of the tree, old to new, for
- * rows kept by id (renamed or moved, or under one that was). A path two rows
- * shared, before or after, is left out: it can't say which row an answer
- * meant.
+ * Follows each row's answers through an edit. It remembers, by row id, the
+ * last path each row had that no other row shared: answers point there. When
+ * a row's path is unique again and different, its answers move from the
+ * remembered path to the new one. So a rename arrives even when it passes
+ * through a blank field or another item's name, and a draft saved under the
+ * original rule (whose remembered paths were built by it) moves its answers
+ * onto its multilingual paths. Returns the moves, old path to new, and the
+ * paths to remember for the next edit.
  */
-export function pathChanges(before: OutlineRow[], after: OutlineRow[], rule: PathRule) {
-  const pathsById = (rows: OutlineRow[]) => {
-    const saved = rowsToSave(rows);
-    const paths = rowPaths(saved, rule);
-    const counts = new Map<string, number>();
-    for (const path of paths) counts.set(path, (counts.get(path) ?? 0) + 1);
-    return new Map(
-      saved.flatMap((row, i) => (counts.get(paths[i]) === 1 ? [[row.id, paths[i]] as const] : []))
-    );
-  };
-  const old = pathsById(before);
-  const changes = new Map<string, string>();
-  pathsById(after).forEach((path, id) => {
-    const was = old.get(id);
-    if (was && was !== path) changes.set(was, path);
+export function followPaths(
+  rows: OutlineRow[],
+  rule: PathRule,
+  last: ReadonlyMap<string, string> = new Map()
+) {
+  const saved = rowsToSave(rows);
+  const paths = rowPaths(saved, rule);
+  const counts = new Map<string, number>();
+  for (const path of paths) counts.set(path, (counts.get(path) ?? 0) + 1);
+  const remembered = new Map(last);
+  const moves = new Map<string, string>();
+  saved.forEach((row, i) => {
+    if (counts.get(paths[i]) !== 1) return;
+    const was = last.get(row.id);
+    if (was !== undefined && was !== paths[i]) moves.set(was, paths[i]);
+    remembered.set(row.id, paths[i]);
   });
-  return changes;
+  return { moves, paths: remembered };
 }
 
 /**
