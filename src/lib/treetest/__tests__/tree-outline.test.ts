@@ -12,13 +12,13 @@ import {
   dropLevels,
   findPathIssues,
   fitPath,
+  followPaths,
   indentRow,
   insertionPoint,
   makeRow,
   moveAmongSiblings,
   moveRow,
   outdentRow,
-  pathChanges,
   removeRow,
   rowPaths,
   rowsFromTree,
@@ -294,26 +294,65 @@ describe("paths that can't tell items apart", () => {
   });
 });
 
-describe("paths that change under answers", () => {
-  it("maps each renamed or moved item's old path to its new one, its children's too", () => {
-    const before = rows("Home@0", "Services@1", "Permits@2", "About@1", "Contact@2");
-    const renamed = before.map((row) =>
-      row.name === "Services" ? { ...row, name: "Our services" } : row
-    );
-    expect(Object.fromEntries(pathChanges(before, renamed, "original"))).toEqual({
-      "/home/services": "/home/our-services",
-      "/home/services/permits": "/home/our-services/permits",
-    });
-    const moved = moveRow(before, 4, { above: before[2].id, below: before[3].id, level: 2 });
-    expect(Object.fromEntries(pathChanges(before, moved, "original"))).toEqual({
-      "/home/about/contact": "/home/services/contact",
-    });
+describe("answers following their items", () => {
+  /** Carries one answer through a series of edits, as the Tree tab does */
+  const follow = (
+    start: OutlineRow[],
+    edits: OutlineRow[][],
+    answer: string,
+    rules: { saved: PathRule; editor: PathRule } = { saved: "original", editor: "original" }
+  ) => {
+    let paths = followPaths(start, rules.saved).paths;
+    for (const rows of edits) {
+      const followed = followPaths(rows, rules.editor, paths);
+      paths = followed.paths;
+      answer = followed.moves.get(answer) ?? answer;
+    }
+    return answer;
+  };
+  const renamed = (rows: OutlineRow[], at: number, names: string[]) =>
+    names.map((name) => rows.map((row, i) => (i === at ? { ...row, name } : row)));
+
+  it("moves answers when an item, or a parent above it, is renamed or moved", () => {
+    const tree = rows("Home@0", "Services@1", "Permits@2", "About@1", "Contact@2");
+    const ourServices = renamed(tree, 1, ["Our services"]);
+    expect(follow(tree, ourServices, "/home/services/permits")).toBe("/home/our-services/permits");
+    const moved = moveRow(tree, 4, { above: tree[2].id, below: tree[3].id, level: 2 });
+    expect(follow(tree, [moved], "/home/about/contact")).toBe("/home/services/contact");
   });
 
-  it("leaves out a path two items share, which can't say which one an answer meant", () => {
-    const before = rows("Home@0", "Contact@1", "About@1");
-    const clash = before.map((row) => (row.name === "About" ? { ...row, name: "Contact" } : row));
-    expect(pathChanges(before, clash, "original").size).toBe(0);
+  it("follows a rename that clears the name before typing the new one", () => {
+    const tree = rows("Home@0", "Contact@1");
+    expect(follow(tree, renamed(tree, 1, ["Contac", "", "H", "Help"]), "/home/contact")).toBe(
+      "/home/help"
+    );
+  });
+
+  it("follows a rename that passes through another item's name on the way", () => {
+    // Typing "Help center" spells "Help", a sibling's name, before it's done
+    const tree = rows("Home@0", "Contact@1", "Help@1");
+    const typing = renamed(tree, 1, ["", "H", "Hel", "Help", "Help ", "Help center"]);
+    expect(follow(tree, typing, "/home/contact")).toBe("/home/help-center");
+    // The sibling's own answers never move
+    expect(follow(tree, typing, "/home/help")).toBe("/home/help");
+  });
+
+  it("moves a draft's answers saved under the original rule onto its multilingual paths", () => {
+    // A Japanese leaf the original rule saved as "/home/", in a draft edited once
+    const tree = rows("Home@0", "Contact@1", "保健@1");
+    const edit = renamed(tree, 1, ["Help"]);
+    const rules = { saved: "original", editor: "multilingual" } as const;
+    expect(follow(tree, edit, "/home/", rules)).toBe("/home/保健");
+    expect(follow(tree, edit, "/home/contact", rules)).toBe("/home/help");
+  });
+
+  it("leaves an answer on a path two items share, which can't say which one it meant", () => {
+    // Two Japanese siblings the original rule both saved as "/home/"
+    const tree = rows("Home@0", "保健@1", "税務@1");
+    const edit = renamed(tree, 1, ["保健センター"]);
+    expect(follow(tree, edit, "/home/", { saved: "original", editor: "multilingual" })).toBe(
+      "/home/"
+    );
   });
 });
 

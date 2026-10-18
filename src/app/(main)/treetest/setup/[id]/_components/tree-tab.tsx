@@ -13,14 +13,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ArrowUp } from "lucide-react";
 import { SETUP_TOUR_STEP_IDS } from "@/lib/constants";
 import {
-  pathChanges,
+  followPaths,
   rowsFromTree,
   rowsToSave,
   structureFromRows,
   treeFromRows,
   type OutlineRow,
 } from "@/lib/treetest/tree-outline";
-import { editorPathRule } from "@/lib/treetest/path-rule";
+import { editorPathRule, treePathRule } from "@/lib/treetest/path-rule";
 import { carryAnswers } from "@/lib/treetest/task-answers";
 import { TreeEditor } from "./tree-editor";
 
@@ -34,11 +34,18 @@ export function TreeTab({ data, status, onChange }: TreeTabProps) {
   const [rows, setRows] = React.useState<OutlineRow[]>(() => rowsFromTree(data.tree.parsed));
   // The tree this tab last saved into the form, to tell its own edits from a tree loaded or copied in
   const emitted = React.useRef<TreeNode[]>(data.tree.parsed);
+  // The path each row's answers point at, by row id. It starts from the saved tree under that
+  // tree's own rule, so a draft saved before the multilingual rule moves its answers on its first
+  // edit
+  const answerPaths = React.useRef<ReadonlyMap<string, string> | null>(null);
+  answerPaths.current ??= remember(rows, data.tree.parsed);
 
   React.useEffect(() => {
     if (data.tree.parsed === emitted.current) return;
     emitted.current = data.tree.parsed;
-    setRows(rowsFromTree(data.tree.parsed));
+    const loaded = rowsFromTree(data.tree.parsed);
+    answerPaths.current = remember(loaded, data.tree.parsed);
+    setRows(loaded);
   }, [data.tree.parsed]);
 
   const pathRule = React.useMemo(
@@ -49,8 +56,9 @@ export function TreeTab({ data, status, onChange }: TreeTabProps) {
   const handleRowsChange = (next: OutlineRow[]) => {
     // A draft's answers follow their items when they're renamed or moved. A launched study's stay
     // put: its participants' answers were recorded against the old paths
-    const changes =
-      status === "draft" ? pathChanges(rows, next, pathRule) : new Map<string, string>();
+    const followed = followPaths(next, pathRule, answerPaths.current ?? undefined);
+    answerPaths.current = followed.paths;
+    const changes = status === "draft" ? followed.moves : new Map<string, string>();
     setRows(next);
     const saved = rowsToSave(next);
     const parsed = treeFromRows(saved, pathRule);
@@ -131,4 +139,9 @@ export function TreeTab({ data, status, onChange }: TreeTabProps) {
       )}
     </div>
   );
+}
+
+/** The paths a loaded tree's answers point at, built by the rule it was saved with */
+function remember(rows: OutlineRow[], saved: TreeNode[]) {
+  return followPaths(rows, treePathRule(saved)).paths;
 }
