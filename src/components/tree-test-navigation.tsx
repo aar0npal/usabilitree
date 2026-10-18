@@ -3,6 +3,7 @@
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TreeTestBranch } from "@/components/tree-test-branch";
 import { Item } from "@/lib/types/tree-test";
 import { pathSegment, treePathRule } from "@/lib/treetest/path-rule";
 import { isTreePathOpen, toggleTreePath } from "@/lib/treetest/navigation-state";
@@ -176,9 +177,9 @@ export const Navigation = ({
                   )}
                 </button>
               )}
-              {isExpanded && (
-                <div className="mt-2">{renderItems(item.children, currentPath, indexPath)}</div>
-              )}
+              <TreeTestBranch open={isExpanded}>
+                {() => renderItems(item.children ?? [], currentPath, indexPath)}
+              </TreeTestBranch>
             </div>
           ) : (
             <div
