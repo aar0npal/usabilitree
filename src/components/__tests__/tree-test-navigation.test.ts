@@ -1,12 +1,25 @@
 import { createElement } from "react";
 import { act, create, type ReactTestInstance } from "react-test-renderer";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Navigation } from "@/components/tree-test-navigation";
 import type { Item } from "@/lib/types/tree-test";
 import { isTreePathOpen, toggleTreePath } from "@/lib/treetest/navigation-state";
 
 vi.mock("@/env", () => ({ env: {} }));
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+    setTimeout(() => callback(0), 16)
+  );
+  vi.stubGlobal("cancelAnimationFrame", clearTimeout);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 function render(items: Item[], allowNonLeafAnswers = false) {
   return renderToStaticMarkup(
