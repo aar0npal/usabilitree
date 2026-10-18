@@ -193,14 +193,38 @@ export function TreeEditor({
     listKey.current += 1;
   }
 
+  // A delete or a move offers Undo in a toast. It's an undo step, so it may only reverse that one
+  // change: any later edit or undo, or leaving the tab, takes the toast away
+  const undoToast = React.useRef<string | number | null>(null);
+  const dropUndoToast = () => {
+    if (undoToast.current === null) return;
+    toast.dismiss(undoToast.current);
+    undoToast.current = null;
+  };
+  React.useEffect(() => dropUndoToast, []);
+  /** Shows a toast whose Undo reverses the change just made */
+  const offerUndo = (message: string) => {
+    undoToast.current = toast(message, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          undoToast.current = null;
+          latestStep.current("undo");
+        },
+      },
+    });
+  };
+
   /** Every edit goes through here, so it can be undone; keystrokes in one field undo as one step */
   const change = (next: OutlineRow[], group: string | null = null) => {
+    dropUndoToast();
     history.current = record(history.current, rows, group);
     emitted.current = next;
     onRowsChange(next);
   };
 
   const step = (direction: "undo" | "redo") => {
+    dropUndoToast();
     const result = (direction === "undo" ? undo : redo)(history.current, rows);
     if (!result) return;
     const [next, after] = result;
@@ -209,6 +233,9 @@ export function TreeEditor({
     onRowsChange(next);
     if (editingId && !next.some((row) => row.id === editingId)) setEditingId(null);
   };
+  // A toast's Undo runs after renders it didn't see; this keeps it on the current rows
+  const latestStep = React.useRef(step);
+  latestStep.current = step;
 
   const onShortcut = (event: React.KeyboardEvent) => {
     if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
@@ -363,7 +390,6 @@ export function TreeEditor({
 
   const remove = () => {
     if (editingIndex === -1) return;
-    const before = rows;
     const row = rows[editingIndex];
     const under = subtreeEnd(rows, editingIndex) - editingIndex - 1;
     change(removeRow(rows, editingIndex));
@@ -373,19 +399,10 @@ export function TreeEditor({
     else setEditingId(null);
     if (!row.name.trim() && under === 0) return;
     const label = row.name.trim() || "Item";
-    toast(
+    offerUndo(
       under > 0
         ? `Deleted “${label}” and ${under} ${under === 1 ? "item" : "items"} under it`
-        : `Deleted “${label}”`,
-      {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            change(before);
-            setEditingId(null);
-          },
-        },
-      }
+        : `Deleted “${label}”`
     );
   };
 
@@ -645,7 +662,6 @@ export function TreeEditor({
     // Nested into a closed parent: open it, so the row is seen where it landed
     const above = rows.find((row) => row.id === info.target?.above);
     if (above && collapsed.has(above.id) && info.target.level > above.level) toggle(above.id, true);
-    const before = rows;
     change(next);
     if (info.touch) {
       // The bar it gets has Undo, and a toast would sit under it
@@ -660,9 +676,8 @@ export function TreeEditor({
       .reverse()
       .find((row) => row.level < next[at].level);
     const name = next[at].name.trim() || "Item";
-    toast(
-      parent ? `Moved “${name}” under ${parent.name.trim()}` : `Moved “${name}” to the top level`,
-      { action: { label: "Undo", onClick: () => change(before) } }
+    offerUndo(
+      parent ? `Moved “${name}” under ${parent.name.trim()}` : `Moved “${name}” to the top level`
     );
   };
 
