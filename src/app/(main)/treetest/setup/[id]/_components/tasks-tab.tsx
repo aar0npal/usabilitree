@@ -30,7 +30,8 @@ interface TasksTabProps {
   data: StudyFormData;
   studyId: string;
   status: string;
-  onChange: (data: StudyFormData) => void;
+  /** The form's setter; an Undo passes it an update, to apply to the form as it is by then */
+  onChange: React.Dispatch<React.SetStateAction<StudyFormData>>;
 }
 
 const SHOWN = { height: "auto", opacity: 1 };
@@ -67,9 +68,9 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
   // Moved straight on the elements, so dragging re-renders nothing until the drop
   const ghostRef = React.useRef<HTMLDivElement>(null);
   const lineRef = React.useRef<HTMLDivElement>(null);
-  // The form as of this render, for an Undo clicked after later edits
-  const latest = React.useRef(data);
-  latest.current = data;
+  // The task list as of this render, so an Undo puts its card's key where the task returns
+  const latest = React.useRef(items);
+  latest.current = items;
 
   const options = React.useMemo(
     () => answerOptions(data.tree.parsed, treePathRule(data.tree.parsed)),
@@ -179,20 +180,17 @@ export function TasksTab({ data, studyId, status, onChange }: TasksTabProps) {
     toast(`Deleted task ${index + 1}`, {
       action: {
         label: "Undo",
+        // Puts the task back into the form as it is now, touching only the task list, so edits
+        // made since, here or on another tab, stay. It works even after you leave this tab
         onClick: () => {
-          const current = latest.current;
-          const at = Math.min(index, current.tasks.items.length);
-          keys.insert(at);
-          onChange({
-            ...current,
-            tasks: {
-              ...current.tasks,
-              items: [
-                ...current.tasks.items.slice(0, at),
-                removed,
-                ...current.tasks.items.slice(at),
-              ],
-            },
+          keys.insert(Math.min(index, latest.current.length));
+          onChange((form) => {
+            const list = form.tasks.items;
+            const at = Math.min(index, list.length);
+            return {
+              ...form,
+              tasks: { ...form.tasks, items: [...list.slice(0, at), removed, ...list.slice(at)] },
+            };
           });
         },
       },
