@@ -520,6 +520,7 @@ export function Stage<S extends object>({
   useEffect(() => {
     const stage = rootRef.current!;
     if (still || !script) {
+      stage.removeAttribute("data-replaying");
       reset();
       stage.removeAttribute("data-offscreen");
       setState(poster ?? initial);
@@ -641,6 +642,7 @@ export function Stage<S extends object>({
       })();
     };
     const stop = (glide = false) => {
+      stage.removeAttribute("data-replaying");
       unwatchIdle();
       if (!ctrl) return;
       ctrl.abort();
@@ -676,6 +678,7 @@ export function Stage<S extends object>({
       root.addEventListener("pointerleave", leave);
     }
     return () => {
+      stage.removeAttribute("data-replaying");
       io.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
       root.removeEventListener("pointerenter", enter);
