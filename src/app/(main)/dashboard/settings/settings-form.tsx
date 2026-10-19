@@ -38,6 +38,7 @@ import { User } from "@/db/schema";
 import { deleteUserAccount, updateUserSettings } from "@/lib/settings/actions";
 import * as Sentry from "@sentry/react";
 import { useSurveyTriggers } from "@/lib/hooks/use-survey-triggers";
+import { resetOnboarding } from "@/lib/onboarding";
 
 const settingsFormSchema = z.object({
   email: z.string().email(),
@@ -119,7 +120,7 @@ export function SettingsForm({ user }: SettingsFormProps) {
 
   const handleResetOnboarding = () => {
     try {
-      localStorage.removeItem("dashboard-tour-completed");
+      resetOnboarding();
     } catch {
       toast.error("Could not reset onboarding. Please allow browser storage and try again.");
       return;

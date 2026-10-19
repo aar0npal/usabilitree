@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import * as Sentry from "@sentry/react";
 import { TriangleAlertIcon } from "lucide-react";
 import { SETUP_TOUR_STEP_IDS } from "@/lib/constants";
+import { EditorDemoDialog } from "@/components/stageshow/editor-demo-dialog";
 
 interface SetupTabsProps {
   params: {
@@ -541,10 +542,12 @@ export default function SetupTabs({ params }: SetupTabsProps) {
         </TabsContent>
 
         <TabsContent value="tree">
+          <EditorDemoDialog editor="tree" />
           <TreeTab data={formData} status={status} onChange={setFormData} />
         </TabsContent>
 
         <TabsContent value="tasks">
+          <EditorDemoDialog editor="tasks" />
           <TasksTab data={formData} studyId={params.id} status={status} onChange={setFormData} />
         </TabsContent>
 
