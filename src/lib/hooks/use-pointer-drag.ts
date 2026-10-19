@@ -35,10 +35,19 @@ export function usePointerDrag<T>(handlers: DragHandlers<T>) {
   React.useLayoutEffect(() => {
     latest.current = handlers;
   });
+  // Ends the drag in progress; `waiting` drops a press that hasn't become one yet
   const stop = React.useRef<(() => void) | null>(null);
+  const waiting = React.useRef<(() => void) | null>(null);
   const endedAt = React.useRef(0);
 
-  React.useEffect(() => () => stop.current?.(), []);
+  // Leaving the page ends both, so nothing runs against an editor that's gone
+  React.useEffect(
+    () => () => {
+      waiting.current?.();
+      stop.current?.();
+    },
+    []
+  );
 
   return React.useMemo(() => {
     type Listen = (
@@ -129,7 +138,10 @@ export function usePointerDrag<T>(handlers: DragHandlers<T>) {
       const unwait = () => {
         window.removeEventListener("pointermove", wait);
         window.removeEventListener("pointerup", unwait);
+        if (waiting.current === unwait) waiting.current = null;
       };
+      waiting.current?.();
+      waiting.current = unwait;
       window.addEventListener("pointermove", wait);
       window.addEventListener("pointerup", unwait);
     };
@@ -149,7 +161,10 @@ export function usePointerDrag<T>(handlers: DragHandlers<T>) {
         document.removeEventListener("touchmove", wander);
         document.removeEventListener("touchend", unwait);
         document.removeEventListener("touchcancel", unwait);
+        if (waiting.current === unwait) waiting.current = null;
       };
+      waiting.current?.();
+      waiting.current = unwait;
       document.addEventListener("touchmove", wander, { passive: true });
       document.addEventListener("touchend", unwait);
       document.addEventListener("touchcancel", unwait);
