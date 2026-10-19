@@ -24,9 +24,7 @@ type Line = { level: number; name: string };
  * spaces, and bulleted or numbered lists.
  */
 export function parseTreeText(text: string): TreeImport {
-  const raw = text
-    .replace(/^\uFEFF/, "")
-    .replace(/\r\n?/g, "\n")
+  const raw = joinQuotedBreaks(text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n"))
     .split("\n")
     // Blank lines, and a spreadsheet's empty rows (",,,")
     .filter((line) => !/^[\s,]*$/.test(line));
@@ -132,4 +130,37 @@ function fromCells(cells: string[]): Line {
       .join(",")
       .trim(),
   };
+}
+
+/**
+ * A spreadsheet cell can hold a line break inside its quotes; it's still one
+ * item, so the break becomes a space before the text is split into lines. A
+ * quote opens a quoted cell only as the cell's first character (as CSV has
+ * it), so a name with a stray quote in it doesn't swallow the lines after it.
+ */
+function joinQuotedBreaks(text: string) {
+  if (!text.includes('"')) return text;
+  let out = "";
+  let quoted = false;
+  let cellStart = true;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (quoted) {
+      if (char === '"' && text[i + 1] === '"') {
+        out += '""';
+        i += 1;
+      } else if (char === '"') {
+        quoted = false;
+        out += char;
+      } else {
+        out += char === "\n" ? " " : char;
+      }
+      continue;
+    }
+    if (char === '"' && cellStart) quoted = true;
+    // Spaces before a cell's opening quote still count as its start, as padded CSV has them
+    cellStart = char === "," || char === "\t" || char === "\n" || (cellStart && char === " ");
+    out += char;
+  }
+  return out;
 }

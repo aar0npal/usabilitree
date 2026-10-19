@@ -37,6 +37,13 @@ describe("importing a tree", () => {
     expect(read(text)).toEqual(["Home@0", "Health, Safety@1", 'The "Best" Clinics@2', "Contact@1"]);
   });
 
+  it("keeps a cell with a line break inside its quotes as one item", () => {
+    const text = 'Home,,\n,"Health\nServices",\n,,Clinics\n,Contact,';
+    expect(read(text)).toEqual(["Home@0", "Health Services@1", "Clinics@2", "Contact@1"]);
+    // A stray quote inside a name opens nothing, so the lines after it stay lines
+    expect(read('Home\n,5" screens\n,Contact')).toEqual(["Home@0", '5" screens@1', "Contact@1"]);
+  });
+
   it("reads cells pasted from Excel or Sheets, which arrive tab-separated", () => {
     const text = "Home\t\t\nServices\t\t\n\tBusiness Permits\t\n\tHealth Services\t\nAbout Us\t\t";
     expect(read(text)).toEqual([
