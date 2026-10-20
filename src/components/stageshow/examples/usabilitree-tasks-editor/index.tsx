@@ -2,7 +2,6 @@ import { type CSSProperties } from "react";
 import {
   Check,
   CheckCheck,
-  ChevronDown,
   FileText,
   GripVertical,
   ListChecks,
@@ -567,14 +566,6 @@ export default function UsabilitreeTasksEditor() {
                     data-cursor={item.parent ? undefined : "pointer"}
                     style={{ marginLeft: item.level * 14 }}
                   >
-                    {item.parent && (
-                      <ChevronDown
-                        size={14}
-                        strokeWidth={2}
-                        className="utk-option__chevron"
-                        aria-hidden
-                      />
-                    )}
                     <span className="utk-option__name">
                       <Name name={item.name} query={s.query} />
                     </span>
