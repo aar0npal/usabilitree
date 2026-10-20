@@ -83,9 +83,11 @@ export function AnswerPicker({ taskNumber, children, ...list }: AnswerPickerProp
 
 /**
  * The search and the tree's items. Arrow keys move through the items that can
- * be answers and Enter picks one; a finger taps them. The list fills in, and
- * follows the search, in background renders, so a long tree never holds up
- * the popover opening or a keystroke.
+ * be answers and Enter picks one; a finger taps them. Only the rows in view,
+ * and a few past each edge, are drawn: every row is one line, so where each
+ * sits is known without drawing it, and a tree of thousands opens as fast as
+ * one of ten. The list follows the search in background renders, so
+ * a keystroke never waits for it.
  *
  * Plain rows rather than cmdk: cmdk mounts slowly for hundreds of items, and
  * scrolls its highlighted row into view with the browser's own scrolling,
@@ -102,35 +104,37 @@ function PickerList({
   const id = React.useId();
   const [query, setQuery] = React.useState("");
   const search = React.useDeferredValue(query);
-  // The first render shows the search alone; the items follow straight after
-  const [ready, setReady] = React.useState(false);
-  React.useEffect(() => {
-    React.startTransition(() => setReady(true));
-  }, []);
-  const rows = useRows({ options, allowParents, selected }, search, ready);
-  const pickable = rows.filter((row) => row.pickable);
+  const [rows, tops] = useRows({ options, allowParents, selected }, search, touch);
+  const pickable = React.useMemo(() => rows.filter((row) => row.pickable), [rows]);
   const [active, setActive] = React.useState(0);
-  const activeIndex = pickable[Math.min(active, pickable.length - 1)]?.index;
+  const activeRow = pickable[Math.min(active, pickable.length - 1)];
+  const activeIndex = activeRow?.index;
   const list = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => setActive(0), [search]);
+  const [start, end, measure] = useWindow(list, tops);
+  // A new search starts at the top of its results
+  React.useEffect(() => {
+    setActive(0);
+    if (list.current) list.current.scrollTop = 0;
+  }, [search]);
   // The rows get handlers that never change, so picking or hovering one re-renders only the rows it changes
-  const latest = React.useRef({ pickable, onToggle });
-  latest.current = { pickable, onToggle };
-  const toggle = React.useCallback((path: string) => latest.current.onToggle(path), []);
-  const hover = React.useCallback((index: number) => {
-    const at = latest.current.pickable.findIndex((row) => row.index === index);
-    if (at !== -1) setActive(at);
-  }, []);
+  const latest = React.useRef(onToggle);
+  latest.current = onToggle;
+  const toggle = React.useCallback((path: string) => latest.current(path), []);
+  const hover = React.useCallback((place: number) => setActive(place - 1), []);
 
-  // Keeps the active row in view inside the list, never by scrolling the page
+  // Keeps the active row in view inside the list, never by scrolling the page, and drawn at once,
+  // for the search field's aria-activedescendant
+  const activeAt = activeRow?.at;
   React.useEffect(() => {
     const box = list.current;
-    const row = box?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`);
-    if (!box || !row || touch) return;
-    if (row.offsetTop < box.scrollTop) box.scrollTop = row.offsetTop - 4;
-    else if (row.offsetTop + row.offsetHeight > box.scrollTop + box.clientHeight)
-      box.scrollTop = row.offsetTop + row.offsetHeight - box.clientHeight + 4;
-  }, [activeIndex, touch]);
+    if (!box || activeAt === undefined || touch) return;
+    const top = LIST_PADDING + tops[activeAt];
+    const bottom = LIST_PADDING + tops[activeAt + 1];
+    if (top < box.scrollTop) box.scrollTop = top - 4;
+    else if (bottom > box.scrollTop + box.clientHeight)
+      box.scrollTop = bottom - box.clientHeight + 4;
+    measure();
+  }, [activeAt, tops, touch, measure]);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (touch) {
@@ -190,28 +194,35 @@ function PickerList({
           touch ? "min-h-0 flex-1 pb-8" : "max-h-[min(340px,50vh)]"
         )}
       >
-        {!ready ? null : rows.length === 0 ? (
+        {rows.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-muted-foreground">
             {options.length === 0
               ? "Add your tree on the Tree tab first."
               : `No items match “${search.trim()}”.`}
           </p>
         ) : (
-          rows.map(({ index, option, pickable: canPick, picked }) => (
-            <PickerRow
-              key={index}
-              id={`${id}-${index}`}
-              index={index}
-              option={option}
-              query={search}
-              pickable={canPick}
-              picked={picked}
-              active={!touch && index === activeIndex}
-              touch={touch}
-              onToggle={toggle}
-              onHover={touch ? undefined : hover}
-            />
-          ))
+          // The rows out of view are space above and below the ones drawn
+          <div
+            role="none"
+            style={{ paddingTop: tops[start], paddingBottom: tops[rows.length] - tops[end] }}
+          >
+            {rows.slice(start, end).map(({ index, option, pickable: canPick, picked, place }) => (
+              <PickerRow
+                key={index}
+                id={`${id}-${index}`}
+                option={option}
+                query={search}
+                pickable={canPick}
+                picked={picked}
+                place={place}
+                setSize={pickable.length}
+                active={!touch && index === activeIndex}
+                touch={touch}
+                onToggle={toggle}
+                onHover={touch ? undefined : hover}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -221,26 +232,29 @@ function PickerList({
 /** One item: an answer to pick, or a parent shown only to say where its items sit */
 const PickerRow = React.memo(function PickerRow({
   id,
-  index,
   option,
   query,
   pickable,
   picked,
+  place,
+  setSize,
   active,
   touch,
   onToggle,
   onHover,
 }: {
   id: string;
-  index: number;
   option: AnswerOption;
   query: string;
   pickable: boolean;
   picked: boolean;
+  /** Its place among the items that can be picked, and their count: most aren't drawn */
+  place: number;
+  setSize: number;
   active: boolean;
   touch: boolean;
   onToggle: (path: string) => void;
-  onHover?: (index: number) => void;
+  onHover?: (place: number) => void;
 }) {
   const name = (
     <span className="min-w-0 flex-1 truncate">
@@ -270,11 +284,12 @@ const PickerRow = React.memo(function PickerRow({
       id={id}
       role="option"
       aria-selected={picked}
-      data-index={index}
+      aria-posinset={place}
+      aria-setsize={setSize}
       onClick={() => onToggle(option.path)}
       // The search keeps the focus, so the arrow keys carry on after a click
       onMouseDown={(event) => event.preventDefault()}
-      onMouseMove={onHover ? () => !active && onHover(index) : undefined}
+      onMouseMove={onHover ? () => !active && onHover(place) : undefined}
       style={indent}
       className={cn(
         "flex cursor-pointer select-none items-center gap-2 rounded-sm pr-2",
@@ -292,26 +307,100 @@ const PickerRow = React.memo(function PickerRow({
   );
 });
 
-/** The rows a search shows; none when nothing it shows can be picked */
+/**
+ * The rows a search shows, none when nothing it shows can be picked, and
+ * where each starts (`tops`, by `rowTops`). Each row knows its place in the
+ * list (`at`) and, if it can be picked, among the rows that can (`place`,
+ * from 1). Picking changes only the rows' `picked`, so the list keeps its
+ * scroll.
+ */
 function useRows(
   { options, allowParents, selected }: Omit<ListProps, "onToggle">,
   query: string,
-  ready: boolean
+  touch: boolean
 ) {
-  return React.useMemo(() => {
-    if (!ready) return [];
-    const shown = searchOptions(options, query);
-    const picked = new Set(selected);
+  const shown = React.useMemo(() => {
+    const matches = searchOptions(options, query);
+    let place = 0;
     const rows = options
-      .map((option, index) => ({
-        index,
-        option,
-        pickable: !option.parent || allowParents,
-        picked: picked.has(option.path),
-      }))
-      .filter(({ index }) => shown.has(index));
-    return rows.some((row) => row.pickable) ? rows : [];
-  }, [options, allowParents, selected, query, ready]);
+      .map((option, index) => ({ option, index }))
+      .filter(({ index }) => matches.has(index))
+      .map(({ option, index }, at) => {
+        const pickable = !option.parent || allowParents;
+        if (pickable) place += 1;
+        return { index, at, option, pickable, place };
+      });
+    return place > 0 ? rows : [];
+  }, [options, allowParents, query]);
+  const tops = React.useMemo(() => rowTops(shown, touch), [shown, touch]);
+  const rows = React.useMemo(() => {
+    const picked = new Set(selected);
+    return shown.map((row) => ({ ...row, picked: picked.has(row.option.path) }));
+  }, [shown, selected]);
+  return [rows, tops] as const;
+}
+
+// The list's own padding, above its first row (p-1)
+const LIST_PADDING = 4;
+// Rendered past each edge of the list's view, so a quick scroll doesn't outrun the rows
+const OVERSCAN = 400;
+
+/**
+ * Where each row starts in the list, and after the last, where it ends. The
+ * heights are the rows' own: h-8 with a mouse; h-11 for an item a finger can
+ * pick, h-9 for a parent it can't.
+ */
+function rowTops(rows: { pickable: boolean }[], touch: boolean) {
+  const tops = [0];
+  rows.forEach((row, i) => tops.push(tops[i] + (!touch ? 32 : row.pickable ? 44 : 36)));
+  return tops;
+}
+
+/**
+ * The rows to draw, [start, end), for the list's scroll and size, kept up as
+ * it scrolls and resizes; and `measure`, to update them straight after
+ * scrolling it by code.
+ */
+function useWindow(ref: React.RefObject<HTMLElement>, tops: number[]) {
+  const [range, setRange] = React.useState<[number, number]>([0, 0]);
+  const measure = React.useCallback(() => {
+    const box = ref.current;
+    if (!box) return;
+    const top = box.scrollTop - LIST_PADDING - OVERSCAN;
+    const bottom = box.scrollTop - LIST_PADDING + box.clientHeight + OVERSCAN;
+    const next: [number, number] = [
+      rowAt(tops, top),
+      Math.min(tops.length - 1, rowAt(tops, bottom) + 1),
+    ];
+    setRange((current) => (current[0] === next[0] && current[1] === next[1] ? current : next));
+  }, [ref, tops]);
+  // Before paint, so the list never shows a frame without its rows
+  React.useLayoutEffect(() => {
+    const box = ref.current;
+    measure();
+    if (!box) return;
+    box.addEventListener("scroll", measure, { passive: true });
+    const resize = new ResizeObserver(measure);
+    resize.observe(box);
+    return () => {
+      box.removeEventListener("scroll", measure);
+      resize.disconnect();
+    };
+  }, [ref, measure]);
+  const [start, end] = range;
+  return [Math.min(start, tops.length - 1), Math.min(end, tops.length - 1), measure] as const;
+}
+
+/** The row at a height in the list: the last whose top is at or above it */
+function rowAt(tops: number[], y: number) {
+  let low = 0;
+  let high = tops.length - 1;
+  while (low < high) {
+    const mid = (low + high + 1) >> 1;
+    if (tops[mid] <= y) low = mid;
+    else high = mid - 1;
+  }
+  return low;
 }
 
 /**
