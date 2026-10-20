@@ -9,6 +9,7 @@ import type { PathRule } from "@/lib/treetest/path-rule";
 import {
   canIndent,
   collapseAllIds,
+  collapsedAtStart,
   dropLevels,
   findPathIssues,
   fitPath,
@@ -143,6 +144,46 @@ describe("editing rows", () => {
     expect(collapseAllIds(two)).toEqual([two[0].id, two[2].id]);
   });
 
+  it("opens a long tree only as deep as a few hundred rows reach", () => {
+    // Three sections of four pages of three items: 3 + 12 + 36 rows
+    const long = rows(
+      ...["A", "B", "C"].flatMap((section) => [
+        `${section}@0`,
+        ...[1, 2, 3, 4].flatMap((page) => [
+          `${section}${page}@1`,
+          ...[1, 2, 3].map((item) => `${section}${page}.${item}@2`),
+        ]),
+      ])
+    );
+    const closed = (max: number) =>
+      collapsedAtStart(long, max).map((id) => long.find((row) => row.id === id)?.name);
+    expect(closed(51)).toEqual([]);
+    // Two levels fit in 20 rows: the pages show, closed
+    expect(closed(20)).toHaveLength(12);
+    expect(closed(20)).not.toContain("A");
+    // Not even two fit in 10: the sections show, closed
+    expect(closed(10)).toEqual([
+      "A",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "B",
+      "B1",
+      "B2",
+      "B3",
+      "B4",
+      "C",
+      "C1",
+      "C2",
+      "C3",
+      "C4",
+    ]);
+    // A lone top-level item stays open, its children showing
+    const lone = rows("Home@0", ...long.map((row) => `${row.name}@${row.level + 1}`));
+    expect(collapsedAtStart(lone, 10)).not.toContain(lone[0].id);
+  });
+
   it("moves a row with everything under it into a gap, at the level the drop sets", () => {
     const list = tree();
     const id = (name: string) => list.find((row) => row.name === name)!.id;
@@ -266,6 +307,18 @@ describe("paths that can't tell items apart", () => {
       "/inicio/caf-crme",
     ]);
     expect(findPathIssues(list, "original").size).toBe(0);
+  });
+
+  it("builds each path on its parent's, and a row two levels down under an empty segment", () => {
+    const list = rows("Home@0", "Shop@1", "Shoes@2", "Help@1", "FAQ@3", "Contact@1");
+    expect(rowPaths(list, "original")).toEqual([
+      "/home",
+      "/home/shop",
+      "/home/shop/shoes",
+      "/home/help",
+      "/home/help//faq",
+      "/home/contact",
+    ]);
   });
 
   it("under the multilingual rule, keeps those names apart by their own letters", () => {

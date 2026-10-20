@@ -22,7 +22,26 @@ export type PathRule = "original" | "multilingual";
 // TypeScript target predates the u flag, though every browser the app supports has it
 const NOT_LETTERS = new RegExp("[^\\p{L}\\p{M}\\p{N}\\s_-]", "gu");
 
+// Segments already made, by rule and name. Between two edits of a long tree only a name or two
+// change, so its thousands of paths are rebuilt from here rather than by the regexes
+const segments: Record<PathRule, Map<string, string>> = {
+  original: new Map(),
+  multilingual: new Map(),
+};
+
 export function pathSegment(name: string, rule: PathRule): string {
+  const cache = segments[rule];
+  let segment = cache.get(name);
+  if (segment === undefined) {
+    // Typing makes a new name each keystroke; a long session starts over rather than grow
+    if (cache.size > 50_000) cache.clear();
+    segment = makeSegment(name, rule);
+    cache.set(name, segment);
+  }
+  return segment;
+}
+
+function makeSegment(name: string, rule: PathRule): string {
   const original = sanitizeTreeTestLink(name);
   if (rule === "original" || !isBlank(original)) return original;
   const letters = name
@@ -57,17 +76,19 @@ export function isBlank(segment: string): boolean {
  * out the same both ways, reads as original.
  */
 export function treePathRule(tree: TreeNode[]): PathRule {
-  let multilingual = false;
-  const matches = (nodes: TreeNode[], trail: string[]): boolean =>
+  let differs = false;
+  // Each node's path both ways, built on its parent's
+  const matches = (nodes: TreeNode[], original: string, multilingual: string): boolean =>
     nodes.every((node) => {
-      const names = [...trail, node.name];
-      if (node.link && node.link !== pathOf(names, "original")) {
-        if (node.link !== pathOf(names, "multilingual")) return false;
-        multilingual = true;
+      const asOriginal = `${original}/${pathSegment(node.name, "original")}`;
+      const asMultilingual = `${multilingual}/${pathSegment(node.name, "multilingual")}`;
+      if (node.link && node.link !== asOriginal) {
+        if (node.link !== asMultilingual) return false;
+        differs = true;
       }
-      return !node.children || matches(node.children, names);
+      return !node.children || matches(node.children, asOriginal, asMultilingual);
     });
-  return matches(tree, []) && multilingual ? "multilingual" : "original";
+  return matches(tree, "", "") && differs ? "multilingual" : "original";
 }
 
 /**

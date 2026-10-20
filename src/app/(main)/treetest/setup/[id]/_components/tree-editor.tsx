@@ -58,6 +58,7 @@ import {
   canIndent,
   canOutdent,
   collapseAllIds,
+  collapsedAtStart,
   dropLevels,
   findPathIssues,
   fitPath,
@@ -141,7 +142,9 @@ export function TreeEditor({
   const [editingId, setEditingId] = React.useState<string | null>(null);
   // The row that takes Tab focus when the tree is reached by keyboard
   const [activeId, setActiveId] = React.useState<string | null>(null);
-  const [collapsed, setCollapsed] = React.useState<Set<string>>(() => new Set());
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(
+    () => new Set(collapsedAtStart(rows))
+  );
   const [dragOver, setDragOver] = React.useState(false);
   const [pending, setPending] = React.useState<{ result: TreeImport; source: string } | null>(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
@@ -182,16 +185,9 @@ export function TreeEditor({
   const lift = useAppleTouch() ? IOS_ADDRESS_BAR : 0;
   const barSpace = KEYBOARD_BAR + lift;
 
-  // Undo and redo cover this editor's own changes. Rows that arrive from outside (the study
-  // loading, a copy) start a fresh history and appear without animating in
+  // Undo and redo cover this editor's own changes. Rows from outside (the study loading, a copy)
+  // come with a new editor, as the Tree tab keys it, so they start a fresh history
   const history = React.useRef<EditHistory<OutlineRow[]>>(emptyHistory());
-  const emitted = React.useRef(rows);
-  const listKey = React.useRef(0);
-  if (rows !== emitted.current) {
-    emitted.current = rows;
-    history.current = emptyHistory();
-    listKey.current += 1;
-  }
 
   // A delete or a move offers Undo in a toast. It's an undo step, so it may only reverse that one
   // change: any later edit or undo, or leaving the tab, takes the toast away
@@ -219,7 +215,6 @@ export function TreeEditor({
   const change = (next: OutlineRow[], group: string | null = null) => {
     dropUndoToast();
     history.current = record(history.current, rows, group);
-    emitted.current = next;
     onRowsChange(next);
   };
 
@@ -229,7 +224,6 @@ export function TreeEditor({
     if (!result) return;
     const [next, after] = result;
     history.current = after;
-    emitted.current = next;
     onRowsChange(next);
     if (editingId && !next.some((row) => row.id === editingId)) setEditingId(null);
   };
@@ -257,7 +251,10 @@ export function TreeEditor({
       ? deferredRows
       : rows;
   const paths = React.useMemo(() => rowPaths(listRows, pathRule), [listRows, pathRule]);
-  const issues = React.useMemo(() => findPathIssues(listRows, pathRule), [listRows, pathRule]);
+  const issues = React.useMemo(
+    () => findPathIssues(listRows, pathRule, paths),
+    [listRows, pathRule, paths]
+  );
   // The chevron turns at once and the rows follow in a background render, so opening a big
   // subtree mounts its rows between animation frames instead of freezing them
   const listCollapsed = React.useDeferredValue(collapsed);
@@ -426,7 +423,7 @@ export function TreeEditor({
 
   const replaceTree = (result: TreeImport, source: string) => {
     setEditingId(null);
-    setCollapsed(new Set());
+    setCollapsed(new Set(collapsedAtStart(result.rows)));
     change(result.rows);
     toast.success(describeImport(result, source));
   };
@@ -928,13 +925,7 @@ export function TreeEditor({
                   </p>
                 )}
 
-                <div
-                  ref={setList}
-                  key={listKey.current}
-                  role="tree"
-                  aria-labelledby={labelId}
-                  className="relative -mb-2"
-                >
+                <div ref={setList} role="tree" aria-labelledby={labelId} className="relative -mb-2">
                   {/* Where a dragged row would land, indented to the level it would take */}
                   {dragging && (
                     <div

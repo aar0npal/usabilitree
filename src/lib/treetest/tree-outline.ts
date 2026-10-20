@@ -39,11 +39,16 @@ export function isParentRow(rows: OutlineRow[], index: number) {
  * the study's rule. Task answers and recorded results store these strings.
  */
 export function rowPaths(rows: OutlineRow[], rule: PathRule): string[] {
-  const trail: string[] = [];
+  // The latest path at each level, so each row's path is its parent's plus its own segment
+  const above: string[] = [];
+  let depth = 0;
   return rows.map((row) => {
-    trail.length = row.level;
-    trail.push(pathSegment(row.name.trim(), rule));
-    return `/${trail.join("/")}`;
+    // A row more than a level below the one above it sits under empty segments
+    for (; depth < row.level; depth += 1) above[depth] = `${depth > 0 ? above[depth - 1] : ""}/`;
+    const path = `${row.level > 0 ? above[row.level - 1] : ""}/${pathSegment(row.name.trim(), rule)}`;
+    above[row.level] = path;
+    depth = row.level + 1;
+    return path;
   });
 }
 
@@ -99,9 +104,12 @@ export type PathIssue =
  * "C#") collide; under the original rule, so do names in other scripts
  * (Japanese, Cyrillic, Arabic…), whose segments come out blank.
  */
-export function findPathIssues(rows: OutlineRow[], rule: PathRule): Map<string, PathIssue> {
+export function findPathIssues(
+  rows: OutlineRow[],
+  rule: PathRule,
+  paths = rowPaths(rows, rule)
+): Map<string, PathIssue> {
   const issues = new Map<string, PathIssue>();
-  const paths = rowPaths(rows, rule);
   const firstByPath = new Map<string, number>();
   rows.forEach((row, index) => {
     if (!row.name.trim()) return;
@@ -274,6 +282,28 @@ export function collapseAllIds(rows: OutlineRow[]) {
   const keep = roots.length === 1 ? roots[0].id : null;
   return rows
     .filter((row, index) => row.id !== keep && isParentRow(rows, index))
+    .map((row) => row.id);
+}
+
+/**
+ * The parents closed when the editor opens a tree. A tree of up to `max`
+ * rows opens whole. A longer one opens level by level from the top while it
+ * shows no more than `max` rows, the parents on its last open level and
+ * below closed: every row costs a render, and thousands at once freeze the
+ * page. The top level always shows.
+ */
+export function collapsedAtStart(rows: OutlineRow[], max = 200) {
+  if (rows.length <= max) return [];
+  const perLevel: number[] = [];
+  for (const row of rows) perLevel[row.level] = (perLevel[row.level] ?? 0) + 1;
+  let levels = 1;
+  let shown = perLevel[0] ?? 0;
+  while (levels < perLevel.length && shown + (perLevel[levels] ?? 0) <= max) {
+    shown += perLevel[levels] ?? 0;
+    levels += 1;
+  }
+  return rows
+    .filter((row, index) => row.level >= levels - 1 && isParentRow(rows, index))
     .map((row) => row.id);
 }
 

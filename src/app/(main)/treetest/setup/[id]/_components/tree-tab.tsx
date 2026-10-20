@@ -39,19 +39,22 @@ export function TreeTab({ data, status, onChange }: TreeTabProps) {
   // edit
   const answerPaths = React.useRef<ReadonlyMap<string, string> | null>(null);
   answerPaths.current ??= remember(rows, data.tree.parsed);
+  // The tree as it last loaded or was copied in. Each gets a new editor (`count` keys it): a fresh
+  // undo history, its rows shown without animating in, and only its top levels open if it's long
+  const [loaded, setLoaded] = React.useState({ tree: data.tree.parsed, count: 0 });
 
   React.useEffect(() => {
     if (data.tree.parsed === emitted.current) return;
     emitted.current = data.tree.parsed;
-    const loaded = rowsFromTree(data.tree.parsed);
-    answerPaths.current = remember(loaded, data.tree.parsed);
-    setRows(loaded);
+    const rowsLoaded = rowsFromTree(data.tree.parsed);
+    answerPaths.current = remember(rowsLoaded, data.tree.parsed);
+    setRows(rowsLoaded);
+    setLoaded(({ count }) => ({ tree: data.tree.parsed, count: count + 1 }));
   }, [data.tree.parsed]);
 
-  const pathRule = React.useMemo(
-    () => editorPathRule(data.tree.parsed, status),
-    [data.tree.parsed, status]
-  );
+  // Read from the tree as it loaded: edits are written by the rule, so they can't change it, and
+  // reading it walks the whole tree, which a long tree can't afford on every keystroke
+  const pathRule = React.useMemo(() => editorPathRule(loaded.tree, status), [loaded.tree, status]);
 
   const handleRowsChange = (next: OutlineRow[]) => {
     // A draft's answers follow their items when they're renamed or moved. A launched study's stay
@@ -109,6 +112,7 @@ export function TreeTab({ data, status, onChange }: TreeTabProps) {
       </Accordion>
 
       <TreeEditor
+        key={loaded.count}
         rows={rows}
         onRowsChange={handleRowsChange}
         pathRule={pathRule}
