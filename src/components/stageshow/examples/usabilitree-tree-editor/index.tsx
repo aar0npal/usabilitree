@@ -409,7 +409,8 @@ function Row({
         {/* A leaf's path is its answer in the Tasks tab; a parent has none, and a nameless row has none yet */}
         {path !== undefined && (
           <span className="ute-path" data-show={(!parent && name.trim() !== "") || undefined}>
-            {id === "contact" ? (
+            {/* Mount after compact mode reveals the badge so Roll can measure its text. */}
+            {id === "contact" && moving ? (
               <Roll variant="fade" align="end">
                 {path}
               </Roll>
