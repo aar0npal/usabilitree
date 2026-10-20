@@ -554,7 +554,6 @@
 .utk .utk-option {
   display: flex;
   align-items: center;
-  /* A top-level name lands on the search field's text edge */
   gap: 7px;
   height: 30px;
   margin-top: 2px;
@@ -579,11 +578,6 @@
 /* Not a match: faded back, still in its place */
 .utk .utk-option[data-dim] {
   opacity: 0.32;
-}
-
-.utk .utk-option__chevron {
-  flex: none;
-  color: #a3a3a3;
 }
 
 .utk .utk-option__name {

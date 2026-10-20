@@ -536,7 +536,7 @@
   background: #262626;
 }
 
-/* Its icon on the rows' chevrons, its text on the top-level names */
+/* Its icon on the top-level names' column, as the app's picker has it */
 .utq .utq-search {
   display: flex;
   align-items: center;
@@ -589,11 +589,6 @@
 
 .utq .utq-option[data-parent] {
   color: var(--utq-muted-fg);
-}
-
-.utq .utq-option__chevron {
-  flex: none;
-  color: #a3a3a3;
 }
 
 .utq .utq-option__name {

@@ -1,5 +1,5 @@
 import { type CSSProperties } from "react";
-import { Check, ChevronDown, Plus, Search, Trash2 } from "lucide-react";
+import { Check, Plus, Search, Trash2 } from "lucide-react";
 import { Collapse, Keyboard, Phone, Roll, Stage, Toggle, type Act } from "../../kit";
 import "./phone.css";
 
@@ -501,14 +501,6 @@ export default function UsabilitreeTasksEditorPhone() {
                     data-target={item.parent ? undefined : `pick-${item.id}`}
                     style={{ marginLeft: item.level * 16 }}
                   >
-                    {item.parent && (
-                      <ChevronDown
-                        size={16}
-                        strokeWidth={2}
-                        className="utq-option__chevron"
-                        aria-hidden
-                      />
-                    )}
                     <span className="utq-option__name">
                       <Name name={item.name} query={s.query} />
                     </span>
