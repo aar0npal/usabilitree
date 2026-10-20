@@ -409,6 +409,7 @@ const updates: Update[] = [
       "After seeing users struggle with setting up tree structures and tasks, I decided to bring a taste of the upcoming overhaul into v1. The new tree and task editors give you a feel for how tree test study setup will work in v2.",
     type: "message",
     details: [
+      "Large tree structures now load faster and feel smoother on desktop across live studies, previews, and study setup.",
       "This is the last update for the current version, apart from bug fixes. The next big update will be the overhaul!",
     ],
     editorDemos: true,
