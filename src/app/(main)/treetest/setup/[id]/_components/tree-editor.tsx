@@ -90,6 +90,14 @@ const IOS_ADDRESS_BAR = 28;
 // Rows that animate in or out in one change. The rest of a big one (Expand all on a long tree)
 // appear or go at once: they're off screen, and animating hundreds of heights drops frames
 const ANIMATED_ROWS = 40;
+// Past this many rows hidden at once (Collapse all on a long tree), the list is replaced rather
+// than each row taken out on its own: thousands of exits, even instant ones, freeze the page
+const BULK_ROWS = 500;
+// A row's height with the 8px gap under it, which the browser holds for a row it skips drawing:
+// one line on a wide screen; below sm a taller line, and the path's own line under it when shown
+const ROW_HEIGHT = 44;
+const ROW_HEIGHT_NARROW = 48;
+const ROW_HEIGHT_WITH_PATH = 80;
 const SHOWN = { height: "auto", opacity: 1 };
 const HIDDEN = { height: 0, opacity: 0 };
 // One level's indent, in px: rows step in by it, and a drag sideways by it changes the level
@@ -261,6 +269,7 @@ export function TreeEditor({
   // The rows as shown, for the keys and the toolbar; the list renders from listRows
   const shown = visibleRows(rows, listCollapsed);
   const lastShown = React.useRef<string[]>([]);
+  const lastKey = React.useRef(0);
   const editingIndex = editingId ? rows.findIndex((row) => row.id === editingId) : -1;
   const placedIndex = placedId ? rows.findIndex((row) => row.id === placedId) : -1;
   // The row the toolbars act on: the one being edited, or one a touch drag just placed
@@ -743,7 +752,8 @@ export function TreeEditor({
   const list = React.useMemo(() => {
     const visible = visibleRows(listRows, listCollapsed);
     const ids = visible.map(({ row }) => row.id);
-    const { entering, leaving } = planMotion(lastShown.current, ids);
+    const { entering, leaving, gone } = planMotion(lastShown.current, ids);
+    const key = gone > BULK_ROWS ? lastKey.current + 1 : lastKey.current;
     const items = visible.map(({ row, index }) => {
       const parent = isParentRow(listRows, index);
       const editing = row.id === editingId;
@@ -780,6 +790,7 @@ export function TreeEditor({
           issue={issue}
           pathRule={pathRule}
           coarse={coarse}
+          height={beside ? ROW_HEIGHT : hasPath ? ROW_HEIGHT_WITH_PATH : ROW_HEIGHT_NARROW}
           dragged={!!draggedIds?.has(row.id)}
           placed={row.id === placedId}
           canIndent={editing && canIndent(listRows, index)}
@@ -791,7 +802,7 @@ export function TreeEditor({
         />
       );
     });
-    return { ids, leaving, items };
+    return { ids, key, leaving, items };
   }, [
     listRows,
     listCollapsed,
@@ -812,6 +823,7 @@ export function TreeEditor({
   ]);
   React.useLayoutEffect(() => {
     lastShown.current = list.ids;
+    lastKey.current = list.key;
   });
 
   return (
@@ -838,12 +850,18 @@ export function TreeEditor({
                   Paths
                 </Label>
                 <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-                <HeaderButton label="Expand all" onClick={() => setCollapsed(new Set())}>
+                {/* In the background: on a long tree, either shows or hides thousands of rows */}
+                <HeaderButton
+                  label="Expand all"
+                  onClick={() => React.startTransition(() => setCollapsed(new Set()))}
+                >
                   <ChevronsUpDown className="h-4 w-4" />
                 </HeaderButton>
                 <HeaderButton
                   label="Collapse all"
-                  onClick={() => setCollapsed(new Set(collapseAllIds(rows)))}
+                  onClick={() =>
+                    React.startTransition(() => setCollapsed(new Set(collapseAllIds(rows))))
+                  }
                 >
                   <ChevronsDownUp className="h-4 w-4" />
                 </HeaderButton>
@@ -925,7 +943,13 @@ export function TreeEditor({
                   </p>
                 )}
 
-                <div ref={setList} role="tree" aria-labelledby={labelId} className="relative -mb-2">
+                <div
+                  ref={setList}
+                  key={list.key}
+                  role="tree"
+                  aria-labelledby={labelId}
+                  className="relative -mb-2"
+                >
                   {/* Where a dragged row would land, indented to the level it would take */}
                   {dragging && (
                     <div
@@ -1111,6 +1135,8 @@ interface RowItemProps {
   issue: PathIssue | undefined;
   pathRule: PathRule;
   coarse: boolean;
+  /** Its height in pixels, for the browser to hold while it skips drawing the row off screen */
+  height: number;
   /** Part of the block being dragged, which stays faint in place until it lands */
   dragged: boolean;
   /** Just placed by a touch drag, with the bar for its level showing */
@@ -1135,6 +1161,7 @@ const RowItem = React.memo(function RowItem({
   issue,
   pathRule,
   coarse,
+  height,
   dragged,
   placed,
   canIndent,
@@ -1161,9 +1188,12 @@ const RowItem = React.memo(function RowItem({
         }),
       }}
       transition={transition}
+      // Off screen, the browser skips the row's style, layout and paint, holding its height (the
+      // last it drew, or the estimate): a long tree, expanded, has thousands of rows
+      style={{ containIntrinsicSize: `auto ${height}px` }}
       // The gap below a row is its margin, inside this clip: padding here wouldn't shrink with the
       // height, so a closed row would keep 8px until it's removed
-      className="overflow-hidden"
+      className="overflow-hidden [content-visibility:auto]"
     >
       <div
         ref={register}
@@ -1259,13 +1289,18 @@ const RowItem = React.memo(function RowItem({
   );
 });
 
-/** Which rows animate as the list changes: the first few to arrive and the first few to go, in list order */
+/**
+ * Which rows animate as the list changes: the first few to arrive and the
+ * first few to go, in list order; and how many go
+ */
 function planMotion(before: string[], after: string[]) {
   const was = new Set(before);
   const is = new Set(after);
+  const gone = before.filter((id) => !is.has(id));
   return {
     entering: new Set(after.filter((id) => !was.has(id)).slice(0, ANIMATED_ROWS)),
-    leaving: new Set(before.filter((id) => !is.has(id)).slice(0, ANIMATED_ROWS)),
+    leaving: new Set(gone.slice(0, ANIMATED_ROWS)),
+    gone: gone.length,
   };
 }
 
