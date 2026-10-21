@@ -2,8 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import { Play, Pause } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PlaybackContext } from "@/components/stageshow/kit/playback";
 import { createPlaybackClock } from "@/components/stageshow/kit/playback-clock";
+import { useReducedMotion } from "@/components/stageshow/kit/reduced-motion";
 import type { EditorDemoKind } from "@/lib/onboarding";
 
 const TreeDesktop = dynamic(
@@ -25,8 +28,10 @@ const TasksPhone = dynamic(
 
 export function EditorDemo({ editor, bleed = true }: { editor: EditorDemoKind; bleed?: boolean }) {
   const [isPhone, setIsPhone] = useState<boolean | null>(null);
+  const [paused, setPaused] = useState(false);
   const [clock] = useState(createPlaybackClock);
   const playback = useMemo(() => ({ clock, repeat: true }), [clock]);
+  const reduced = useReducedMotion();
 
   useEffect(() => () => clock.dispose(), [clock]);
 
@@ -57,7 +62,25 @@ export function EditorDemo({ editor, bleed = true }: { editor: EditorDemoKind; b
   return (
     <figure className="space-y-3">
       <figcaption className="space-y-1">
-        <h3 className="text-sm font-medium">{title}</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-sm font-medium">{title}</h3>
+          {!reduced && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 motion-reduce:hidden [&_svg]:size-3.5"
+              disabled={!Demo}
+              aria-label={`${paused ? "Play" : "Pause"} ${title.toLowerCase()} demo`}
+              onClick={() => {
+                clock.setPaused(!paused);
+                setPaused(!paused);
+              }}
+            >
+              {paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
+            </Button>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">{description}</p>
       </figcaption>
       {/* The viewport selects the demo; its container only scales it. */}
