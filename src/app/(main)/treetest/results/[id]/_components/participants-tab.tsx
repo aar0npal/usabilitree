@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +34,16 @@ import { toast } from "sonner";
 import { ParticipantDetailsModal } from "./participant-details-modal";
 import * as Sentry from "@sentry/react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import {
+  QuestionMarkCircledIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
+} from "@radix-ui/react-icons";
 import { RESULTS_TOUR_STEP_IDS } from "@/lib/constants";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200] as const;
 
 interface ParticipantsTabProps {
   studyId: string;
@@ -47,6 +56,8 @@ export function ParticipantsTab({ studyId, isOwner }: ParticipantsTabProps) {
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
   const [deleteParticipantId, setDeleteParticipantId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(50);
 
   useEffect(() => {
     getParticipants(studyId)
@@ -96,10 +107,7 @@ export function ParticipantsTab({ studyId, isOwner }: ParticipantsTabProps) {
   const handleNavigate = (direction: "prev" | "next") => {
     if (!selectedParticipant) return;
 
-    const sortedParticipants = filteredParticipants.sort(
-      (a, b) => a.startedAt.getTime() - b.startedAt.getTime()
-    );
-    const currentIndex = sortedParticipants.findIndex((p) => p.id === selectedParticipant.id);
+    const currentIndex = filteredParticipants.findIndex((p) => p.id === selectedParticipant.id);
 
     let newIndex;
     if (direction === "prev") {
@@ -108,40 +116,61 @@ export function ParticipantsTab({ studyId, isOwner }: ParticipantsTabProps) {
       newIndex = currentIndex + 1;
     }
 
-    if (newIndex >= 0 && newIndex < sortedParticipants.length) {
-      setSelectedParticipant(sortedParticipants[newIndex]);
+    if (newIndex >= 0 && newIndex < filteredParticipants.length) {
+      const newParticipant = filteredParticipants[newIndex];
+      setSelectedParticipant(newParticipant);
+
+      // Update the page to show the new participant
+      const newPage = Math.floor(newIndex / pageSize) + 1;
+      if (newPage !== currentPage) {
+        setCurrentPage(newPage);
+      }
     }
   };
 
   const getNavigationState = () => {
     if (!selectedParticipant) return { canNavigatePrev: false, canNavigateNext: false };
 
-    const sortedParticipants = filteredParticipants.sort(
-      (a, b) => a.startedAt.getTime() - b.startedAt.getTime()
-    );
-    const currentIndex = sortedParticipants.findIndex((p) => p.id === selectedParticipant.id);
+    const currentIndex = filteredParticipants.findIndex((p) => p.id === selectedParticipant.id);
 
     return {
       canNavigatePrev: currentIndex > 0,
-      canNavigateNext: currentIndex < sortedParticipants.length - 1,
+      canNavigateNext: currentIndex < filteredParticipants.length - 1,
     };
   };
 
-  const filteredParticipants = participants.filter((p) => {
-    const searchLower = search.toLowerCase();
+  // Memoize filtered and sorted participants
+  const filteredParticipants = useMemo(() => {
+    const filtered = participants.filter((p) => {
+      const searchLower = search.toLowerCase();
 
-    // If search is a number, only match participant numbers
-    if (/^\d+$/.test(search)) {
-      return `participant ${p.participantNumber}`.includes(search);
-    }
+      // If search is a number, only match participant numbers
+      if (/^\d+$/.test(search)) {
+        return `participant ${p.participantNumber}`.includes(search);
+      }
 
-    // Otherwise search across all fields
-    return (
-      p.id.toLowerCase().includes(searchLower) ||
-      p.sessionId.toLowerCase().includes(searchLower) ||
-      `participant ${p.participantNumber}`.toLowerCase().includes(searchLower)
-    );
-  });
+      // Otherwise search across all fields
+      return (
+        p.id.toLowerCase().includes(searchLower) ||
+        p.sessionId.toLowerCase().includes(searchLower) ||
+        `participant ${p.participantNumber}`.toLowerCase().includes(searchLower)
+      );
+    });
+
+    // Sort by startedAt
+    return filtered.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+  }, [participants, search]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredParticipants.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedParticipants = filteredParticipants.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes or page size changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, pageSize]);
 
   if (loading) {
     return (
@@ -281,84 +310,179 @@ export function ParticipantsTab({ studyId, isOwner }: ParticipantsTabProps) {
               </TableHead>
               <TableHead>Started</TableHead>
               <TableHead>Duration</TableHead>
-              <TableHead>Success Rate</TableHead>
+              <TableHead>Success</TableHead>
               <TableHead>Directness</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredParticipants
-              .sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime())
-              .map((participant) => {
-                const taskStats = participant.taskResults.reduce(
-                  (acc, result) => {
-                    if (!result.skipped) {
-                      acc.total++;
-                      if (result.successful) acc.successful++;
-                      if (result.directPathTaken) acc.direct++;
-                    }
-                    return acc;
-                  },
-                  { total: 0, successful: 0, direct: 0 }
-                );
+            {paginatedParticipants.map((participant) => {
+              const taskStats = participant.taskResults.reduce(
+                (acc, result) => {
+                  if (!result.skipped) {
+                    acc.total++;
+                    if (result.successful) acc.successful++;
+                    if (result.directPathTaken) acc.direct++;
+                  }
+                  return acc;
+                },
+                { total: 0, successful: 0, direct: 0 }
+              );
 
-                const successRate =
-                  taskStats.total === 0
-                    ? null
-                    : Math.round((taskStats.successful / taskStats.total) * 100);
-                const directnessRate =
-                  taskStats.total === 0
-                    ? null
-                    : Math.round((taskStats.direct / taskStats.total) * 100);
+              const successRate =
+                taskStats.total === 0
+                  ? null
+                  : Math.round((taskStats.successful / taskStats.total) * 100);
+              const directnessRate =
+                taskStats.total === 0
+                  ? null
+                  : Math.round((taskStats.direct / taskStats.total) * 100);
 
-                return (
-                  <TableRow
-                    key={participant.id}
-                    className="cursor-pointer transition-colors hover:bg-muted/50"
-                    onClick={() => handleRowClick(participant)}
-                  >
-                    <TableCell className="font-medium">
-                      <div>Participant {participant.participantNumber}</div>
-                      {participant.hasDuplicates && (
-                        <div className="text-xs text-yellow-500">Has duplicate responses</div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {participant.completedAt ? (
-                        <div className="flex items-center gap-2 text-green-500">
-                          <CheckCircledIcon className="h-4 w-4" />
-                          <span>Completed</span>
-                        </div>
-                      ) : (
+              return (
+                <TableRow
+                  key={participant.id}
+                  className={`cursor-pointer transition-colors hover:bg-muted/50 ${
+                    selectedParticipant?.id === participant.id
+                      ? "rounded-md bg-muted/70 ring-1 ring-inset ring-accent"
+                      : ""
+                  }`}
+                  onClick={() => handleRowClick(participant)}
+                >
+                  <TableCell className="font-medium">
+                    <div>Participant {participant.participantNumber}</div>
+                    {participant.hasDuplicates && (
+                      <div className="text-xs text-yellow-500">Has duplicate responses</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      if (participant.completedAt) {
+                        return (
+                          <div className="flex items-center gap-2 text-green-500">
+                            <CheckCircledIcon className="h-4 w-4" />
+                            <span>Completed</span>
+                          </div>
+                        );
+                      }
+
+                      // Check last activity - use most recent task result or startedAt
+                      // Note: createdAt is stored in microseconds, need to divide by 1000
+                      const lastActivity =
+                        participant.taskResults.length > 0
+                          ? Math.max(
+                              ...participant.taskResults.map((r) => Number(r.createdAt) / 1000)
+                            )
+                          : participant.startedAt.getTime();
+
+                      const fourMinutesAgo = Date.now() - 4 * 60 * 1000;
+                      const isInProgress = lastActivity > fourMinutesAgo;
+
+                      if (isInProgress) {
+                        return (
+                          <div className="flex items-center gap-2 text-blue-500">
+                            <div className="h-4 w-4 animate-pulse rounded-full bg-blue-500" />
+                            <span>In Progress</span>
+                          </div>
+                        );
+                      }
+
+                      return (
                         <div className="flex items-center gap-2 text-red-500">
                           <CrossCircledIcon className="h-4 w-4" />
                           <span>Abandoned</span>
                         </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {formatDistanceToNow(participant.startedAt, { addSuffix: true })}
-                    </TableCell>
-                    <TableCell>
-                      {participant.durationSeconds ? (
-                        <span>{Math.round(participant.durationSeconds / 60)} min</span>
-                      ) : participant.completedAt ? (
-                        `${Math.round(
-                          (participant.completedAt.getTime() - participant.startedAt.getTime()) /
-                            1000 /
-                            60
-                        )} min`
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell>{successRate !== null ? `${successRate}%` : "-"}</TableCell>
-                    <TableCell>{directnessRate !== null ? `${directnessRate}%` : "-"}</TableCell>
-                  </TableRow>
-                );
-              })}
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    {formatDistanceToNow(participant.startedAt, { addSuffix: true })}
+                  </TableCell>
+                  <TableCell>
+                    {participant.durationSeconds ? (
+                      <span>{Math.round(participant.durationSeconds / 60)} min</span>
+                    ) : participant.completedAt ? (
+                      `${Math.round(
+                        (participant.completedAt.getTime() - participant.startedAt.getTime()) /
+                          1000 /
+                          60
+                      )} min`
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                  <TableCell>{successRate !== null ? `${successRate}%` : "-"}</TableCell>
+                  <TableCell>{directnessRate !== null ? `${directnessRate}%` : "-"}</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination Controls */}
+      {filteredParticipants.length > 0 && (
+        <div className="flex items-center justify-between px-2 py-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Showing</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="h-8 w-[70px] rounded-md border border-input bg-background px-2 text-sm"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            <span>of {filteredParticipants.length} participants</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                <DoubleArrowLeftIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                <DoubleArrowRightIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedParticipant && (
         <ParticipantDetailsModal
           participant={selectedParticipant}

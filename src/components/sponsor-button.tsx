@@ -21,7 +21,7 @@ export function SponsorButton({ className, variant = "nav" }: SponsorButtonProps
 
   const handleSponsorClick = () => {
     // Track PostHog event
-    posthog?.capture("sponsor_button_clicked", {
+    posthog?.capture("donate_button_clicked", {
       variant,
     });
 
@@ -37,7 +37,7 @@ export function SponsorButton({ className, variant = "nav" }: SponsorButtonProps
           "flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground md:hidden",
           className
         )}
-        title="Sponsor me on GitHub"
+        title="Support with a donation"
       >
         <KoFi className="h-4 w-4" />
       </button>
@@ -52,7 +52,7 @@ export function SponsorButton({ className, variant = "nav" }: SponsorButtonProps
         "hidden items-center whitespace-nowrap rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent hover:text-accent-foreground md:flex",
         className
       )}
-      title="Sponsor me on GitHub"
+      title="Support with a donation"
     >
       <KoFi className="mr-2 h-4 w-4 flex-shrink-0" />
       <span>Donate</span>

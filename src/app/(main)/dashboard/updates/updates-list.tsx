@@ -305,8 +305,8 @@ const updates: Update[] = [
   {
     id: "22",
     date: "2026-01-29",
-    title: "Widget Proxy Fix",
-    description: "Fixed CORS errors preventing Feedback and Roadmap widgets from loading.",
+    title: "Feedback & Roadmap Button Fix",
+    description: "Fixed loading issues with Feedback and Roadmap buttons.",
     type: "fix",
   },
   {

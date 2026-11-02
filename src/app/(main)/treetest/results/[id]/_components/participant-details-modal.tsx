@@ -29,7 +29,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { format } from "date-fns";
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect, useCallback } from "react";
 import { Participant } from "@/lib/treetest/results-actions";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 
@@ -59,6 +59,31 @@ export function ParticipantDetailsModal({
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [showDeleteParticipantDialog, setShowDeleteParticipantDialog] = useState(false);
 
+  // Keyboard navigation
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      // Don't navigate if a dialog is open or user is typing
+      if (deleteTaskId || showDeleteParticipantDialog) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.key === "ArrowLeft" && canNavigatePrev) {
+        e.preventDefault();
+        onNavigate("prev");
+      } else if (e.key === "ArrowRight" && canNavigateNext) {
+        e.preventDefault();
+        onNavigate("next");
+      }
+    },
+    [canNavigatePrev, canNavigateNext, onNavigate, deleteTaskId, showDeleteParticipantDialog]
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, handleKeyDown]);
+
   const handleClose = () => {
     // Clean up any pending delete state
     setDeleteTaskId(null);
@@ -77,22 +102,40 @@ export function ParticipantDetailsModal({
             <DialogTitle>Participant {participant.participantNumber} Details</DialogTitle>
             <div className="mt-0 flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onNavigate("prev")}
-                  disabled={!canNavigatePrev}
-                >
-                  <ChevronLeftIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onNavigate("next")}
-                  disabled={!canNavigateNext}
-                >
-                  <ChevronRightIcon className="h-4 w-4" />
-                </Button>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onNavigate("prev")}
+                        disabled={!canNavigatePrev}
+                      >
+                        <ChevronLeftIcon className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>Previous participant (←)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onNavigate("next")}
+                        disabled={!canNavigateNext}
+                      >
+                        <ChevronRightIcon className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>Next participant (→)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               {isOwner && (
                 <Button
