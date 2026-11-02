@@ -450,11 +450,11 @@ function ConfidenceRatingsTable({ ratings }: { ratings: TaskStats["stats"]["conf
                       {breakdown.directSuccess > 0 && (
                         <div
                           className="absolute left-0 top-0 h-full bg-green-500 @container/directSuccess"
-                          style={{
-                            ...(lastSegment === "directSuccess"
+                          style={
+                            lastSegment === "directSuccess"
                               ? { right: 0 }
-                              : { width: `${breakdown.directSuccessPercentage}%` }),
-                          }}
+                              : { width: `${breakdown.directSuccessPercentage}%` }
+                          }
                         >
                           {breakdown.directSuccessPercentage >= 1 && (
                             <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-medium text-white">
@@ -613,15 +613,7 @@ function ConfidenceRatingsTable({ ratings }: { ratings: TaskStats["stats"]["conf
   );
 }
 
-export function TasksTab({
-  studyId,
-  isOwner,
-  onSetOpener,
-}: {
-  studyId: string;
-  isOwner?: boolean;
-  onSetOpener?: (opener: () => void) => void;
-}) {
+export function TasksTab({ studyId, isOwner }: { studyId: string; isOwner?: boolean }) {
   const router = useRouter();
   const [tasks, setTasks] = useState<TaskStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -669,13 +661,6 @@ export function TasksTab({
         if (data.length > 0) {
           setOpenItem(data[0]?.id || null);
         }
-
-        // Set up the opener function for the tour
-        if (onSetOpener && data.length > 0) {
-          onSetOpener(() => {
-            setOpenItem(data[0]?.id || null);
-          });
-        }
       } catch (error) {
         Sentry.captureException(error);
       } finally {
@@ -684,7 +669,7 @@ export function TasksTab({
     };
 
     loadTasks();
-  }, [studyId, onSetOpener]);
+  }, [studyId]);
 
   const filteredTasks = tasks.filter((task) => {
     if (!search) return true;
@@ -743,7 +728,8 @@ export function TasksTab({
     <div className="space-y-4">
       <div className="rounded-lg border bg-muted p-2.5 text-sm text-muted-foreground">
         <p>
-          <strong>Note:</strong> Click to expand/collapse task details.
+          Select a task to open its results, including success rates and participant paths. Select
+          it again to collapse.
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

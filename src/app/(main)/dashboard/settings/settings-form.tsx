@@ -30,6 +30,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatedSpinner } from "@/components/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ import { User } from "@/db/schema";
 import { deleteUserAccount, updateUserSettings } from "@/lib/settings/actions";
 import * as Sentry from "@sentry/react";
 import { useSurveyTriggers } from "@/lib/hooks/use-survey-triggers";
+import { resetOnboarding } from "@/lib/onboarding";
 
 const settingsFormSchema = z.object({
   email: z.string().email(),
@@ -71,6 +73,7 @@ type SettingsFormProps = {
 };
 
 export function SettingsForm({ user }: SettingsFormProps) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
@@ -114,6 +117,16 @@ export function SettingsForm({ user }: SettingsFormProps) {
     }
     setIsLoading(false);
   }
+
+  const handleResetOnboarding = () => {
+    try {
+      resetOnboarding();
+    } catch {
+      toast.error("Could not reset onboarding. Please allow browser storage and try again.");
+      return;
+    }
+    router.push("/dashboard?onboarding=1");
+  };
 
   // const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
   //   const file = event.target.files?.[0];
@@ -315,6 +328,20 @@ export function SettingsForm({ user }: SettingsFormProps) {
             </Card>
           </motion.div>
         )}
+
+        <motion.div variants={cardVariants}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Onboarding</CardTitle>
+              <CardDescription>Replay the welcome screen and quick dashboard tour.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button type="button" variant="outline" onClick={handleResetOnboarding}>
+                Reset onboarding
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         <motion.div variants={cardVariants}>
           <Card className="border-primary/20">

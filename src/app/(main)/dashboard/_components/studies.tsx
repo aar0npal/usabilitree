@@ -7,8 +7,9 @@ import { AnimatedItem } from "./animated-item";
 import { getCurrentUser } from "@/lib/auth/session";
 import { eq } from "drizzle-orm";
 import { env } from "@/env";
+import TourDashboard from "./dashboard-tour";
 
-export async function Studies() {
+export async function Studies({ showTour = false }: { showTour?: boolean }) {
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -31,6 +32,7 @@ export async function Studies() {
 
   return (
     <div className="space-y-6">
+      {showTour && <TourDashboard />}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <NewStudy
           isEligible={studyCount < studyLimit}

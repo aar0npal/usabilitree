@@ -7,7 +7,6 @@ import { StudiesSkeleton } from "./_components/studies-skeleton";
 import { DashboardTracker } from "./_components/dashboard-tracker";
 import { Paths } from "@/lib/constants";
 import { getCurrentUser } from "@/lib/auth/session";
-import TourDashboard from "./_components/dashboard-tour";
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
@@ -33,9 +32,8 @@ export default async function DashboardPage({
         <p className="text-sm text-muted-foreground">Manage your studies here</p>
       </div>
       <React.Suspense fallback={<StudiesSkeleton />}>
-        <Studies />
+        <Studies showTour={showTour} />
       </React.Suspense>
-      {showTour && <TourDashboard />}
     </div>
   );
 }

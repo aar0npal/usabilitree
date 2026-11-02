@@ -54,7 +54,7 @@ const TourContext = createContext<TourContextType | null>(null);
 
 const PADDING = 16;
 const CONTENT_WIDTH = 300;
-const CONTENT_HEIGHT = 200;
+const CONTENT_HEIGHT = 240;
 
 function getElementPosition(id: string) {
   const element = document.getElementById(id);
@@ -74,6 +74,7 @@ function calculateContentPosition(
 ) {
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const contentWidth = Math.min(CONTENT_WIDTH, viewportWidth - PADDING * 2);
 
   let left = elementPos.left;
   let top = elementPos.top;
@@ -81,14 +82,14 @@ function calculateContentPosition(
   switch (position) {
     case "top":
       top = elementPos.top - CONTENT_HEIGHT - PADDING;
-      left = elementPos.left + elementPos.width / 2 - CONTENT_WIDTH / 2;
+      left = elementPos.left + elementPos.width / 2 - contentWidth / 2;
       break;
     case "bottom":
       top = elementPos.top + elementPos.height + PADDING;
-      left = elementPos.left + elementPos.width / 2 - CONTENT_WIDTH / 2;
+      left = elementPos.left + elementPos.width / 2 - contentWidth / 2;
       break;
     case "left":
-      left = elementPos.left - CONTENT_WIDTH - PADDING;
+      left = elementPos.left - contentWidth - PADDING;
       top = elementPos.top + elementPos.height / 2 - CONTENT_HEIGHT / 2;
       break;
     case "right":
@@ -98,9 +99,15 @@ function calculateContentPosition(
   }
 
   return {
-    top: Math.max(PADDING, Math.min(top, viewportHeight - CONTENT_HEIGHT - PADDING)),
-    left: Math.max(PADDING, Math.min(left, viewportWidth - CONTENT_WIDTH - PADDING)),
-    width: CONTENT_WIDTH,
+    top: Math.max(
+      window.scrollY + PADDING,
+      Math.min(top, window.scrollY + viewportHeight - CONTENT_HEIGHT - PADDING)
+    ),
+    left: Math.max(
+      window.scrollX + PADDING,
+      Math.min(left, window.scrollX + viewportWidth - contentWidth - PADDING)
+    ),
+    width: contentWidth,
     height: CONTENT_HEIGHT,
   };
 }
@@ -122,6 +129,14 @@ export function TourProvider({
   } | null>(null);
   const [isCompleted, setIsCompleted] = useState(isTourCompleted);
   const [documentHeight, setDocumentHeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (currentStep < 0) return;
+    document.getElementById(steps[currentStep]?.selectorId ?? "")?.scrollIntoView({
+      block: "center",
+      behavior: "instant",
+    });
+  }, [currentStep, steps]);
 
   const updateElementPosition = useCallback(() => {
     if (currentStep >= 0 && currentStep < steps.length) {
@@ -188,6 +203,7 @@ export function TourProvider({
 
   const endTour = useCallback(() => {
     setCurrentStep(-1);
+    setIsCompleted(true);
   }, []);
 
   const startTour = useCallback(() => {
@@ -396,7 +412,13 @@ export function TourProvider({
                   >
                     {steps[currentStep]?.content}
                   </motion.div>
-                  <div className="mt-4 flex justify-between">
+                  <div className="mt-4 flex items-center gap-4">
+                    <button
+                      onClick={endTour}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      Skip
+                    </button>
                     {currentStep > 0 && (
                       <button
                         onClick={previousStep}
@@ -504,7 +526,7 @@ export function TourAlertDialog({
   const secondaryAction = getChildOfType(TourSecondaryAction);
 
   return (
-    <AlertDialog open={isOpen}>
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogContent className="max-w-md p-6">
         <AlertDialogHeader className="flex flex-col items-center justify-center">
           <div className="relative mb-4">

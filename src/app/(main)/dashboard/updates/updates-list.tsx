@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EditorDemos } from "./editor-demos";
 
 type Update = {
   id: string;
@@ -11,6 +12,7 @@ type Update = {
   description: string;
   type: "feature" | "improvement" | "fix" | "message";
   details?: string[];
+  editorDemos?: boolean;
 };
 
 /** Parse YYYY-MM-DD as a local calendar date (ISO date-only strings parse as UTC and can show the wrong day). */
@@ -399,6 +401,19 @@ const updates: Update[] = [
       "Helpful when the expected destination is a whole section rather than one specific page.",
     ],
   },
+  {
+    id: "30",
+    date: "2026-11-03",
+    title: "Last update before the overhaul",
+    description:
+      "After seeing users struggle with setting up tree structures and tasks, I decided to bring a taste of the upcoming overhaul into v1. The new tree and task editors give you a feel for how tree test study setup will work in v2.",
+    type: "message",
+    details: [
+      "Large tree structures now load faster and feel smoother on desktop across live studies, previews, and study setup.",
+      "This is the last update for the current version, apart from bug fixes. The next big update will be the overhaul!",
+    ],
+    editorDemos: true,
+  },
 ];
 
 export function UpdatesList() {
@@ -418,9 +433,10 @@ export function UpdatesList() {
         >
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <CardTitle className="text-lg font-semibold">{update.title}</CardTitle>
                 <Badge
+                  className="shrink-0"
                   variant={
                     update.type === "feature"
                       ? "default"
@@ -434,7 +450,7 @@ export function UpdatesList() {
                   {update.type}
                 </Badge>
               </div>
-              <time className="text-sm text-muted-foreground">
+              <time dateTime={update.date} className="text-sm text-muted-foreground">
                 {formatCalendarDate(update.date)}
               </time>
             </CardHeader>
@@ -448,6 +464,26 @@ export function UpdatesList() {
                     </li>
                   ))}
                 </ul>
+              )}
+              {update.editorDemos && (
+                <div className="space-y-6 pt-4">
+                  <EditorDemos />
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    If you&apos;ve read this far, feel free to email me at{" "}
+                    <a
+                      href="mailto:aaron@usabilitree.com"
+                      className="font-medium text-foreground underline underline-offset-4"
+                    >
+                      aaron@usabilitree.com
+                    </a>{" "}
+                    and say whatever you want! If this update impressed you or you like the new
+                    editors, I&apos;d be glad to hear it. If you&apos;d like to test v2, include{" "}
+                    <strong className="font-medium text-foreground">
+                      &ldquo;I want to join beta test&rdquo;
+                    </strong>{" "}
+                    in your email.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
