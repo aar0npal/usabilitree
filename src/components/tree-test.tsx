@@ -57,6 +57,8 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
   const [confidenceLevel, setConfidenceLevel] = useState<string>();
   const [pathTaken, setPathTaken] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Blocks a second save before the re-render that disables the controls
+  const submittingRef = useRef(false);
   const [bannerHeight, setBannerHeight] = useState(0);
   const bannerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -103,9 +105,10 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
   };
 
   const handleConfidenceSubmit = async () => {
-    if (!selectedLink || isSubmitting) return;
+    if (!selectedLink || submittingRef.current) return;
 
     try {
+      submittingRef.current = true;
       setIsSubmitting(true);
 
       if (!config.preview && config.participantId) {
@@ -145,35 +148,51 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
       });
       Sentry.captureException(error);
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
 
   const skipTask = async () => {
-    if (!config.preview && config.participantId) {
-      const endTime = Date.now();
-      const duration = (endTime - startTime!) / 1000;
+    if (submittingRef.current) return;
 
-      const isOnlyRootHome = config.tree.length === 1;
-      //&& config.tree[0].name.toLowerCase().includes("home");
-      const rootLink = isOnlyRootHome ? pathSegment(config.tree[0].name, pathRule) : "";
+    try {
+      submittingRef.current = true;
+      setIsSubmitting(true);
 
-      // An empty path (the user didn't touch the nav menu) is scored as a direct skip
-      await storeTreeTaskResult(config.participantId, config.tasks[currentTask].id, {
-        completionTimeSeconds: duration,
-        pathTaken: pathTaken !== `/${rootLink}` ? pathTaken : "",
-        selectedLink: null,
-        skipped: true,
+      if (!config.preview && config.participantId) {
+        const endTime = Date.now();
+        const duration = (endTime - startTime!) / 1000;
+
+        const isOnlyRootHome = config.tree.length === 1;
+        //&& config.tree[0].name.toLowerCase().includes("home");
+        const rootLink = isOnlyRootHome ? pathSegment(config.tree[0].name, pathRule) : "";
+
+        // An empty path (the user didn't touch the nav menu) is scored as a direct skip
+        await storeTreeTaskResult(config.participantId, config.tasks[currentTask].id, {
+          completionTimeSeconds: duration,
+          pathTaken: pathTaken !== `/${rootLink}` ? pathTaken : "",
+          selectedLink: null,
+          skipped: true,
+        });
+      }
+
+      //setResults((prev) => [...prev, { taskId: config.tasks[currentTask].id, skipped: true }]);
+      moveToNextTask();
+    } catch (error) {
+      toast("Error submitting task result", {
+        icon: <ExclamationTriangleIcon className="h-5 w-5 text-destructive" />,
       });
+      Sentry.captureException(error);
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
-
-    //setResults((prev) => [...prev, { taskId: config.tasks[currentTask].id, skipped: true }]);
-    moveToNextTask();
   };
 
   const moveToNextTask = () => {
     if (currentTask < config.tasks.length - 1) {
-      setCurrentTask((prev) => prev + 1);
+      setCurrentTask((prev) => Math.min(prev + 1, config.tasks.length - 1));
       setStarted(false);
       setResetKey((prev) => prev + 1);
       setStartTime(undefined);
@@ -220,7 +239,7 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
                 </h2>
                 <div className="text-mt-2 max-h-[30vh] overflow-y-auto pr-2 text-sm sm:text-base">
                   <p>
-                    {config.tasks[currentTask].description ??
+                    {config.tasks[currentTask]?.description ??
                       "[Error occurred - please report this to the study administrator]"}
                   </p>
                 </div>
@@ -228,7 +247,8 @@ export function TreeTestComponent({ config, initialTaskIndex = 0, onTaskChange }
               {started && (
                 <button
                   onClick={skipTask}
-                  className="mt-3 shrink-0 text-sm text-blue-600 underline hover:text-blue-800 sm:text-base md:mt-1"
+                  disabled={isSubmitting}
+                  className="mt-3 shrink-0 text-sm text-blue-600 underline hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base md:mt-1"
                 >
                   {config.customText.skipTask}
                 </button>
