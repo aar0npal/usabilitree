@@ -6,14 +6,15 @@ import { Card } from "@/components/ui/card";
 import { loadCompletionMessage, updateParticipantCompletion } from "@/lib/treetest/actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as Sentry from "@sentry/react";
+import { safeStorage } from "@/lib/safe-storage";
 
 const CompletedPage = ({ params }: { params: { id: string } }) => {
   const [completionMessage, setCompletionMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const participantId = localStorage.getItem("participantId");
-    const savedActiveTime = localStorage.getItem(`treeTest_${params.id}_activeTime`);
+    const participantId = safeStorage.getItem("participantId");
+    const savedActiveTime = safeStorage.getItem(`treeTest_${params.id}_activeTime`);
     const activeTime = savedActiveTime ? parseInt(savedActiveTime, 10) / 1000 : null;
 
     // Update completion time if participantId exists
@@ -23,11 +24,11 @@ const CompletedPage = ({ params }: { params: { id: string } }) => {
       });
     }
 
-    // Remove participantId, currentTask, activeTime, and taskOrder from localStorage
-    localStorage.removeItem("participantId");
-    localStorage.removeItem(`treeTest_${params.id}_currentTask`);
-    localStorage.removeItem(`treeTest_${params.id}_activeTime`);
-    localStorage.removeItem(`treeTest_${params.id}_taskOrder`);
+    // Remove participantId, currentTask, activeTime, and taskOrder from storage
+    safeStorage.removeItem("participantId");
+    safeStorage.removeItem(`treeTest_${params.id}_currentTask`);
+    safeStorage.removeItem(`treeTest_${params.id}_activeTime`);
+    safeStorage.removeItem(`treeTest_${params.id}_taskOrder`);
 
     // Load completion message
     loadCompletionMessage(params.id)
