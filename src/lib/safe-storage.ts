@@ -19,11 +19,10 @@ export const safeStorage = {
     }
   },
   removeItem(key: string) {
-    memory.delete(key);
     try {
       localStorage.removeItem(key);
     } catch {
-      // Storage is blocked; the memory copy is already gone.
+      memory.delete(key);
     }
   },
 };

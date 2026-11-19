@@ -24,7 +24,7 @@ const CompletedPage = ({ params }: { params: { id: string } }) => {
       });
     }
 
-    // Remove participantId, currentTask, activeTime, and taskOrder from localStorage
+    // Remove participantId, currentTask, activeTime, and taskOrder from storage
     safeStorage.removeItem("participantId");
     safeStorage.removeItem(`treeTest_${params.id}_currentTask`);
     safeStorage.removeItem(`treeTest_${params.id}_activeTime`);

@@ -35,28 +35,18 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
     debounce: 500,
   });
 
-  // Store task index in localStorage - defined with useCallback to memoize
+  // Store task index in storage - defined with useCallback to memoize
   const storeTaskIndex = useCallback(
     (taskIndex: number) => {
-      try {
-        const key = `treeTest_${params.id}_currentTask`;
-        safeStorage.setItem(key, taskIndex.toString());
-      } catch (error) {
-        console.error("Error storing task index in localStorage:", error);
-      }
+      safeStorage.setItem(`treeTest_${params.id}_currentTask`, taskIndex.toString());
     },
     [params.id]
   );
 
-  // Store active time in localStorage - defined with useCallback to memoize
+  // Store active time in storage - defined with useCallback to memoize
   const storeActiveTime = useCallback(() => {
-    try {
-      const key = `treeTest_${params.id}_activeTime`;
-      const totalActiveTime = getTotalActiveTime() + savedActiveTime;
-      safeStorage.setItem(key, totalActiveTime.toString());
-    } catch (error) {
-      console.error("Error storing active time in localStorage:", error);
-    }
+    const totalActiveTime = getTotalActiveTime() + savedActiveTime;
+    safeStorage.setItem(`treeTest_${params.id}_activeTime`, totalActiveTime.toString());
   }, [getTotalActiveTime, params.id, savedActiveTime]);
 
   useEffect(() => {
@@ -74,7 +64,7 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
         if (participantId) {
           config = await loadTestConfig(params.id, false, participantId);
           if (config.participantId === participantId) {
-            // Retrieve the stored task index and active time from localStorage
+            // Retrieve the stored task index and active time from storage
             const activeTimeKey = `treeTest_${params.id}_activeTime`;
             const storedActiveTime = safeStorage.getItem(activeTimeKey);
             const storedCurrentTask = safeStorage.getItem(currentTaskKey);
@@ -97,7 +87,7 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
                 } else {
                   // If the stored task index is out of bounds, reset to 0
                   setInitialTaskIndex(0);
-                  storeTaskIndex(0); // Reset task index in localStorage
+                  storeTaskIndex(0); // Reset task index in storage
                 }
               }
             }
