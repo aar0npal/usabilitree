@@ -7,6 +7,7 @@ import { loadTestConfig } from "@/lib/treetest/actions";
 import { TreeTestConfig } from "@/lib/types/tree-test";
 import { shuffle } from "@/lib/utils";
 import { LoadingSkeleton } from "@/components/tree-test-loading-skeleton";
+import { safeStorage } from "@/lib/safe-storage";
 
 export default function TreeTestPage({ params }: { params: { id: string } }) {
   const [config, setConfig] = useState<TreeTestConfig>();
@@ -39,7 +40,7 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
     (taskIndex: number) => {
       try {
         const key = `treeTest_${params.id}_currentTask`;
-        localStorage.setItem(key, taskIndex.toString());
+        safeStorage.setItem(key, taskIndex.toString());
       } catch (error) {
         console.error("Error storing task index in localStorage:", error);
       }
@@ -52,7 +53,7 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
     try {
       const key = `treeTest_${params.id}_activeTime`;
       const totalActiveTime = getTotalActiveTime() + savedActiveTime;
-      localStorage.setItem(key, totalActiveTime.toString());
+      safeStorage.setItem(key, totalActiveTime.toString());
     } catch (error) {
       console.error("Error storing active time in localStorage:", error);
     }
@@ -65,7 +66,7 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
     const fetchConfig = async () => {
       configFetchedRef.current = true; // Mark as fetched immediately
       try {
-        const participantId = localStorage.getItem("participantId");
+        const participantId = safeStorage.getItem("participantId");
         const orderKey = `treeTest_${params.id}_taskOrder`;
         const currentTaskKey = `treeTest_${params.id}_currentTask`;
         let config: TreeTestConfig;
@@ -75,8 +76,8 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
           if (config.participantId === participantId) {
             // Retrieve the stored task index and active time from localStorage
             const activeTimeKey = `treeTest_${params.id}_activeTime`;
-            const storedActiveTime = localStorage.getItem(activeTimeKey);
-            const storedCurrentTask = localStorage.getItem(currentTaskKey);
+            const storedActiveTime = safeStorage.getItem(activeTimeKey);
+            const storedCurrentTask = safeStorage.getItem(currentTaskKey);
             if (storedActiveTime) {
               const parsedActiveTime = parseInt(storedActiveTime, 10);
               // Check if the stored active time is valid
@@ -103,24 +104,24 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
           } else {
             // If the participantId doesn't match, set the new one
             if (config.participantId) {
-              localStorage.setItem("participantId", config.participantId);
+              safeStorage.setItem("participantId", config.participantId);
             }
-            localStorage.removeItem(currentTaskKey); // Clear stale index so fresh start is detected
-            localStorage.removeItem(orderKey); // Clear any stale order from the previous session
+            safeStorage.removeItem(currentTaskKey); // Clear stale index so fresh start is detected
+            safeStorage.removeItem(orderKey); // Clear any stale order from the previous session
             setInitialTaskIndex(0);
           }
         } else {
           config = await loadTestConfig(params.id);
           if (config.participantId) {
-            localStorage.setItem("participantId", config.participantId);
+            safeStorage.setItem("participantId", config.participantId);
           }
           // Clear any stale keys from a previous session for this study
-          localStorage.removeItem(currentTaskKey);
-          localStorage.removeItem(orderKey);
+          safeStorage.removeItem(currentTaskKey);
+          safeStorage.removeItem(orderKey);
         }
-        const storedOrder = localStorage.getItem(orderKey);
+        const storedOrder = safeStorage.getItem(orderKey);
         // Detect in-progress participants — null means fresh start
-        const priorTaskIndex = localStorage.getItem(currentTaskKey);
+        const priorTaskIndex = safeStorage.getItem(currentTaskKey);
         let hasProgress = priorTaskIndex !== null;
         let restored = false;
 
@@ -136,15 +137,15 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
               restored = true;
             } else {
               // Task count changed — clear stale order and reset progress
-              localStorage.removeItem(orderKey);
-              localStorage.removeItem(currentTaskKey);
+              safeStorage.removeItem(orderKey);
+              safeStorage.removeItem(currentTaskKey);
               setInitialTaskIndex(0);
               hasProgress = false;
             }
           } catch {
             // Corrupted value — clear and reset progress
-            localStorage.removeItem(orderKey);
-            localStorage.removeItem(currentTaskKey);
+            safeStorage.removeItem(orderKey);
+            safeStorage.removeItem(currentTaskKey);
             setInitialTaskIndex(0);
             hasProgress = false;
           }
@@ -154,7 +155,7 @@ export default function TreeTestPage({ params }: { params: { id: string } }) {
           // Only shuffle for fresh starts — don't reshuffle mid-study if owner
           // enabled randomization after the participant already began
           const shuffled = shuffle(config.tasks);
-          localStorage.setItem(orderKey, JSON.stringify(shuffled.map((t) => t.id)));
+          safeStorage.setItem(orderKey, JSON.stringify(shuffled.map((t) => t.id)));
           config = { ...config, tasks: shuffled };
         }
 
