@@ -169,10 +169,11 @@ export default function ResultTabs({ params, userEmail, isOwner }: ResultTabsPro
                       className="gap-2"
                     >
                       {isFinishing ? (
-                        <>Finishing...</>
+                        <span>Finishing...</span>
                       ) : (
                         <>
-                          <FlagIcon className="h-4 w-4" /> Finish Study
+                          <FlagIcon className="h-4 w-4" />
+                          <span>Finish Study</span>
                         </>
                       )}
                     </AlertDialogAction>
