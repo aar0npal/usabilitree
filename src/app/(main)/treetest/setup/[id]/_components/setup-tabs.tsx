@@ -415,12 +415,13 @@ export default function SetupTabs({ params }: SetupTabsProps) {
                     className="gap-2"
                   >
                     {isLaunching ? (
-                      <>Launching...</>
+                      <span key="launching">Launching...</span>
                     ) : isSaving ? (
-                      <>Saving...</>
+                      <span key="saving">Saving...</span>
                     ) : (
                       <>
-                        <RocketIcon className="h-4 w-4" /> Launch Study
+                        <RocketIcon className="h-4 w-4" />
+                        <span>Launch Study</span>
                       </>
                     )}
                   </AlertDialogAction>
